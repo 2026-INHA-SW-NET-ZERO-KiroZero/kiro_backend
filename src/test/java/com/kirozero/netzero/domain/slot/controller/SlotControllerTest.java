@@ -49,4 +49,16 @@ class SlotControllerTest {
                 .andExpect(jsonPath("$.slots[0].participantCount").value(0))
                 .andExpect(jsonPath("$.slots[0].commonKitSummary[0]").value("식용유"));
     }
+
+    @Test
+    void readsSlotDetailForJoinScreen() throws Exception {
+        mockMvc.perform(get("/api/v1/slots/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.slotId").value(1))
+                .andExpect(jsonPath("$.placeName").value("인하대 조리실습실"))
+                .andExpect(jsonPath("$.stationCode").value("A"))
+                .andExpect(jsonPath("$.participantCount").value(0))
+                .andExpect(jsonPath("$.commonKit[4]").value("참기름"))
+                .andExpect(jsonPath("$.participants.length()").value(0));
+    }
 }
