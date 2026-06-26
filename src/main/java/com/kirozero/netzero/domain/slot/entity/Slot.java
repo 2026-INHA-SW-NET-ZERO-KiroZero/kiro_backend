@@ -67,6 +67,11 @@ public class Slot extends BaseTimeEntity {
         this.selectedMenuJson = selectedMenuJson;
     }
 
+    public void reopenForRecommendation() {
+        this.status = SlotStatus.OPEN;
+        this.selectedMenuJson = null;
+    }
+
     public void saveCookingPlan(String cookingPlanJson) {
         this.cookingPlanJson = cookingPlanJson;
     }
