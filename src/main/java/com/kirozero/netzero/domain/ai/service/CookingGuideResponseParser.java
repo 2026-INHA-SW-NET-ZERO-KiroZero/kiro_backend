@@ -252,11 +252,11 @@ final class CookingGuideResponseParser {
     ) {
         CookingUsedIngredientResponse ingredient = pickIngredient(usedIngredients, index);
         String taskPurpose = fallbackPurpose(phase, title);
-        String taskDetail = detailFor(phase, ingredient, title);
+        String taskDetail = detailFor(phase, ingredient, title, index, usedIngredients.size());
         return new ParticipantTaskResponse(
                 participant.participantId(),
                 participant.nickname(),
-                fallbackTaskName(phase, ingredient, title, index),
+                fallbackTaskName(phase, ingredient, title, index, usedIngredients.size()),
                 taskPurpose,
                 taskDetail,
                 attentionPointsFor(phase),
@@ -266,6 +266,20 @@ final class CookingGuideResponseParser {
     }
 
     private static String detailFor(String phase, CookingUsedIngredientResponse ingredient, String title) {
+        return detailFor(phase, ingredient, title, 0, ingredient == null ? 0 : 1);
+    }
+
+    private static String detailFor(
+            String phase,
+            CookingUsedIngredientResponse ingredient,
+            String title,
+            int index,
+            int usedIngredientCount
+    ) {
+        String supportDetail = supportDetailFor(phase, title, index, usedIngredientCount);
+        if (supportDetail != null) {
+            return supportDetail;
+        }
         if (ingredient == null) {
             if ("FINISH".equals(phase)) {
                 return "완성 사진을 먼저 찍고, 사용한 재료의 소진량을 0/25/50/75/100% 중 하나로 기록합니다.";
@@ -309,7 +323,8 @@ final class CookingGuideResponseParser {
             String phase,
             CookingUsedIngredientResponse ingredient,
             String title,
-            int index
+            int index,
+            int usedIngredientCount
     ) {
         if ("FINISH".equals(phase)) {
             return switch (index % 4) {
@@ -318,6 +333,10 @@ final class CookingGuideResponseParser {
                 case 2 -> "식후 사진 기록";
                 default -> "정리와 안전 확인";
             };
+        }
+        String supportTaskName = supportTaskNameFor(phase, index, usedIngredientCount);
+        if (supportTaskName != null) {
+            return supportTaskName;
         }
         if (ingredient != null) {
             if ("PREP".equals(phase)) {
@@ -328,6 +347,44 @@ final class CookingGuideResponseParser {
             }
         }
         return title + " 담당";
+    }
+
+    private static String supportTaskNameFor(String phase, int index, int usedIngredientCount) {
+        if (usedIngredientCount <= 0 || index < usedIngredientCount) {
+            return null;
+        }
+        int supportIndex = (index - usedIngredientCount) % 3;
+        if ("PREP".equals(phase)) {
+            return switch (supportIndex) {
+                case 0 -> "도구와 볼 준비";
+                case 1 -> "물기 제거와 재료 정리";
+                default -> "손질 상태 검수";
+            };
+        }
+        if ("COOK".equals(phase)) {
+            return switch (supportIndex) {
+                case 0 -> "불 조절과 팬 확인";
+                case 1 -> "양념 계량";
+                default -> "조리 도구 정리";
+            };
+        }
+        return null;
+    }
+
+    private static String supportDetailFor(String phase, String title, int index, int usedIngredientCount) {
+        String taskName = supportTaskNameFor(phase, index, usedIngredientCount);
+        if (taskName == null) {
+            return null;
+        }
+        return switch (taskName) {
+            case "도구와 볼 준비" -> title + "에 필요한 도마, 칼, 볼을 준비하고 손질 전 재료와 손질 후 재료를 담을 공간을 나눕니다.";
+            case "물기 제거와 재료 정리" -> "씻은 재료의 물기를 체나 키친타월로 제거하고, 손질된 재료를 조리 순서대로 볼에 나눠 담습니다.";
+            case "손질 상태 검수" -> "재료 크기가 너무 큰 조각은 다시 자르고, 껍질이나 심지처럼 먹기 어려운 부분이 남았는지 확인합니다.";
+            case "불 조절과 팬 확인" -> "팬을 중불로 예열하고 재료가 타지 않도록 불 세기를 확인합니다. 연기가 나면 바로 불을 낮춥니다.";
+            case "양념 계량" -> "공용 양념을 한 번에 붓지 않도록 작은 그릇에 덜어 두고, 간장과 소금은 조금씩 넣을 수 있게 준비합니다.";
+            case "조리 도구 정리" -> "사용한 칼과 도마를 조리대 가장자리에서 치우고, 팬 주변에 물기나 장애물이 없도록 정리합니다.";
+            default -> null;
+        };
     }
 
     private static String fallbackPurpose(String phase, String title) {

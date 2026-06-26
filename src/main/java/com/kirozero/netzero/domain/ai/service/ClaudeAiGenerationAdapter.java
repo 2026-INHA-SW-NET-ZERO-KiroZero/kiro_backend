@@ -127,7 +127,11 @@ public class ClaudeAiGenerationAdapter implements AiGenerationAdapter {
                 - PREP는 2개 이상, COOK는 2개 이상, FINISH는 1개 이상 포함합니다.
                 - 각 step은 사용자가 화면을 보고 바로 움직일 수 있는 조리 지시여야 합니다.
                 - 각 step에는 참여자 전원의 participantTasks를 넣습니다.
+                - 각 step의 participantTasks 개수는 participants 개수와 정확히 같아야 합니다.
+                - 한 참여자는 한 step 안에서 정확히 하나의 task만 가져야 합니다.
                 - 같은 step 안에서 참여자들의 역할이 겹치지 않게 배정합니다.
+                - 한 재료만 다루는 step이어도 여러 명에게 같은 손질 작업을 반복 배정하지 마세요.
+                  예: 마늘 다지기 step에서는 "마늘 다지기", "도구와 볼 준비", "물기 제거와 재료 정리", "손질 상태 검수"처럼 나눕니다.
                 - 숙련도 HIGH 참여자는 팬 조리, 불 조절, 간 조절 같은 위험/판단 작업을 우선 배정합니다.
                 - 숙련도 LOW 참여자는 세척, 계량, 담기, 사진 기록, 정리처럼 안전한 작업을 우선 배정합니다.
                 - taskName은 "담당"처럼 추상적으로 쓰지 말고 "양배추 0.5cm 채썰기", "중불에서 감자 3분 볶기"처럼 행동으로 씁니다.

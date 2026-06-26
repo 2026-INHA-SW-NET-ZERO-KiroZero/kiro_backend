@@ -10,6 +10,8 @@ import com.kirozero.netzero.domain.recommendation.dto.CandidateUsedIngredientRes
 import com.kirozero.netzero.domain.recommendation.dto.MenuCandidateResponse;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 
 class CookingGuideResponseParserTest {
@@ -96,6 +98,47 @@ class CookingGuideResponseParserTest {
         assertContains(finishTask.displayInstruction(), "소진량");
     }
 
+    @Test
+    void fillsMissingParticipantTasksWithDistinctSupportRolesForSingleIngredientStep() {
+        CookingGuideResponse guide = CookingGuideResponseParser.parseOrFallback("""
+                {
+                  "steps": [
+                    {
+                      "stepOrder": 1,
+                      "phase": "PREP",
+                      "title": "마늘 다지기",
+                      "usedIngredients": [
+                        {
+                          "ingredientId": 6,
+                          "nameKo": "마늘",
+                          "plannedUseGrams": 20
+                        }
+                      ],
+                      "participantTasks": [
+                        {
+                          "participantId": 4,
+                          "nickname": "D",
+                          "taskName": "마늘 다지기",
+                          "taskDetail": "마늘 20g을 곱게 다집니다."
+                        }
+                      ]
+                    }
+                  ]
+                }
+                """, fourParticipantContext());
+
+        List<String> taskNames = guide.steps().getFirst().participantTasks().stream()
+                .map(task -> task.taskName())
+                .toList();
+        Set<String> distinctNames = taskNames.stream().collect(Collectors.toSet());
+
+        assertEquals(4, taskNames.size());
+        assertEquals(4, distinctNames.size());
+        assertContains(taskNames.get(1), "도구");
+        assertContains(taskNames.get(2), "물기");
+        assertEquals("마늘 다지기", taskNames.get(3));
+    }
+
     private CookingGuideGenerationContext context() {
         MenuCandidateResponse selectedMenu = new MenuCandidateResponse(
                 "C",
@@ -132,6 +175,41 @@ class CookingGuideResponseParserTest {
                 List.of(
                         new AiParticipant(1L, "A", "LOW", false, List.of()),
                         new AiParticipant(2L, "B", "HIGH", true, List.of())
+                )
+        );
+    }
+
+    private CookingGuideGenerationContext fourParticipantContext() {
+        MenuCandidateResponse selectedMenu = new MenuCandidateResponse(
+                "D",
+                "시금치 파프리카 청양고추 냉채",
+                "LOW_CARBON",
+                List.of(
+                        new CandidateUsedIngredientResponse(
+                                6L,
+                                "마늘",
+                                new BigDecimal("40"),
+                                new BigDecimal("20"),
+                                new BigDecimal("0.5")
+                        )
+                ),
+                List.of("식용유", "소금", "참기름"),
+                List.of(),
+                20,
+                "LOW",
+                "남은 채소를 활용합니다.",
+                List.of("마늘 다지기", "양념", "담기"),
+                List.of("손질", "양념")
+        );
+
+        return new CookingGuideGenerationContext(
+                2L,
+                selectedMenu,
+                List.of(
+                        new AiParticipant(1L, "A", "HIGH", true, List.of()),
+                        new AiParticipant(2L, "B", "MEDIUM", true, List.of()),
+                        new AiParticipant(3L, "C", "LOW", false, List.of()),
+                        new AiParticipant(4L, "D", "MEDIUM", false, List.of())
                 )
         );
     }
