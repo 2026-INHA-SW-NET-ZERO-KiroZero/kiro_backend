@@ -42,8 +42,11 @@ public class SlotController {
     }
 
     @GetMapping("/{slotId}")
-    public SlotDetailResponse getSlot(@PathVariable Long slotId) {
-        return slotService.getSlot(slotId);
+    public SlotDetailResponse getSlot(
+            @PathVariable Long slotId,
+            @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization
+    ) {
+        return slotService.getSlot(slotId, authorization);
     }
 
     @SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)

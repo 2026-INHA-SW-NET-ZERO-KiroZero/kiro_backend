@@ -1,5 +1,6 @@
 package com.kirozero.netzero.domain.slot.service;
 
+import com.kirozero.netzero.domain.auth.service.AuthService;
 import com.kirozero.netzero.domain.session.entity.SessionParticipant;
 import com.kirozero.netzero.domain.session.repository.SessionIngredientRepository;
 import com.kirozero.netzero.domain.session.repository.SessionParticipantRepository;
@@ -10,8 +11,10 @@ import com.kirozero.netzero.domain.slot.dto.SlotListResponse;
 import com.kirozero.netzero.domain.slot.entity.Slot;
 import com.kirozero.netzero.domain.slot.enums.SlotStatus;
 import com.kirozero.netzero.domain.slot.repository.SlotRepository;
+import com.kirozero.netzero.domain.user.entity.User;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -28,6 +31,7 @@ public class SlotService {
     private final SlotRepository slotRepository;
     private final SessionParticipantRepository sessionParticipantRepository;
     private final SessionIngredientRepository sessionIngredientRepository;
+    private final AuthService authService;
 
     @Transactional(readOnly = true)
     public SlotListResponse getSlots(LocalDate date, SlotStatus status) {
@@ -47,15 +51,22 @@ public class SlotService {
     }
 
     @Transactional(readOnly = true)
-    public SlotDetailResponse getSlot(Long slotId) {
+    public SlotDetailResponse getSlot(Long slotId, String authorizationHeader) {
         Slot slot = slotRepository.findById(slotId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Slot not found."));
         List<SessionParticipant> participants = sessionParticipantRepository.findBySlotIdOrderByJoinedAtAsc(slotId);
+        Optional<User> currentUser = authService.currentUserIfPresent(authorizationHeader);
+        Optional<SessionParticipant> myParticipant = currentUser
+                .flatMap(user -> participants.stream()
+                        .filter(participant -> participant.getUser().getId().equals(user.getId()))
+                        .findFirst());
 
         return SlotDetailResponse.from(
                 slot,
                 participants.size(),
                 COMMON_KIT,
+                myParticipant.isPresent(),
+                myParticipant.map(SessionParticipant::getId).orElse(null),
                 participants.stream()
                         .map(participant -> SlotDetailParticipantResponse.from(
                                 participant,

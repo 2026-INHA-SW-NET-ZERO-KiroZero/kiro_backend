@@ -8,6 +8,7 @@ import com.kirozero.netzero.domain.allergy.service.AllergyTagService;
 import com.kirozero.netzero.domain.user.entity.User;
 import com.kirozero.netzero.domain.user.repository.UserRepository;
 import java.util.Locale;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -72,6 +73,14 @@ public class AuthService {
         Long userId = authTokenService.parseUserId(extractBearerToken(authorizationHeader));
         return userRepository.findWithAllergiesById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found."));
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<User> currentUserIfPresent(String authorizationHeader) {
+        if (!StringUtils.hasText(authorizationHeader)) {
+            return Optional.empty();
+        }
+        return Optional.of(requireUser(authorizationHeader));
     }
 
     private String normalizeEmail(String email) {

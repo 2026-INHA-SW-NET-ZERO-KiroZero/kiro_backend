@@ -17,6 +17,8 @@ public record SlotDetailResponse(
         long participantCount,
         SlotStatus status,
         List<String> commonKit,
+        boolean joined,
+        Long myParticipantId,
         List<SlotDetailParticipantResponse> participants
 ) {
 
@@ -24,6 +26,8 @@ public record SlotDetailResponse(
             Slot slot,
             long participantCount,
             List<String> commonKit,
+            boolean joined,
+            Long myParticipantId,
             List<SlotDetailParticipantResponse> participants
     ) {
         return new SlotDetailResponse(
@@ -37,6 +41,8 @@ public record SlotDetailResponse(
                 participantCount,
                 slot.getStatus(),
                 commonKit,
+                joined,
+                myParticipantId,
                 participants
         );
     }
