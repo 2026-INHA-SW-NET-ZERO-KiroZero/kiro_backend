@@ -88,6 +88,7 @@ jobs:
             DB_DRIVER=com.mysql.cj.jdbc.Driver
             JPA_DDL_AUTO=update
             JPA_SHOW_SQL=false
+            NETZERO3_AUTH_TOKEN_SECRET=${{ secrets.NETZERO3_AUTH_TOKEN_SECRET }}
             NETZERO3_STORAGE_S3_BUCKET=${{ secrets.S3_BUCKET }}
             NETZERO3_STORAGE_S3_REGION=${{ secrets.S3_REGION }}
             EOF
