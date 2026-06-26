@@ -7,6 +7,8 @@ import com.kirozero.netzero.domain.session.dto.JoinIngredientRequest;
 import com.kirozero.netzero.domain.session.dto.JoinSlotRequest;
 import com.kirozero.netzero.domain.session.dto.JoinSlotResponse;
 import com.kirozero.netzero.domain.session.dto.SessionIngredientResponse;
+import com.kirozero.netzero.domain.session.dto.UpdateSessionIngredientsRequest;
+import com.kirozero.netzero.domain.session.dto.UpdateSessionIngredientsResponse;
 import com.kirozero.netzero.domain.session.entity.SessionIngredient;
 import com.kirozero.netzero.domain.session.entity.SessionParticipant;
 import com.kirozero.netzero.domain.session.repository.SessionIngredientRepository;
@@ -57,6 +59,36 @@ public class SessionParticipationService {
                 participant.getId(),
                 slot.getStatus(),
                 participant.isCanPurchase(),
+                ingredients.stream()
+                        .map(SessionIngredientResponse::from)
+                        .toList()
+        );
+    }
+
+    @Transactional
+    public UpdateSessionIngredientsResponse updateIngredients(
+            Long slotId,
+            String authorizationHeader,
+            UpdateSessionIngredientsRequest request
+    ) {
+        User user = authService.requireUser(authorizationHeader);
+        Slot slot = slotRepository.findById(slotId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Slot not found."));
+
+        if (slot.getStatus() != SlotStatus.OPEN) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Only OPEN slots can update ingredients.");
+        }
+
+        SessionParticipant participant = sessionParticipantRepository.findBySlotIdAndUserId(slotId, user.getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Only participants can update ingredients."));
+
+        sessionIngredientRepository.deleteByParticipantId(participant.getId());
+        List<SessionIngredient> ingredients = sessionIngredientRepository.saveAll(
+                createSessionIngredients(slot, participant, request.items())
+        );
+
+        return new UpdateSessionIngredientsResponse(
+                slot.getId(),
                 ingredients.stream()
                         .map(SessionIngredientResponse::from)
                         .toList()
