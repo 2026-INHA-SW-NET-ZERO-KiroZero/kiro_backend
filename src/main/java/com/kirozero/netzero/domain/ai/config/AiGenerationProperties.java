@@ -23,8 +23,8 @@ public class AiGenerationProperties {
         private String apiKey = "";
         private String baseUrl = "https://api.anthropic.com";
         private String version = "2023-06-01";
-        private String model = "claude-sonnet-4-5";
-        private int maxTokens = 6000;
+        private String model = "claude-haiku-4-5";
+        private int maxTokens = 2000;
         private int timeoutSeconds = 30;
     }
 }
