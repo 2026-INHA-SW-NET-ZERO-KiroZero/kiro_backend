@@ -7,6 +7,7 @@ import com.kirozero.netzero.domain.recommendation.dto.MenuCandidateResponse;
 import com.kirozero.netzero.domain.result.dto.ConsumptionRecordItemRequest;
 import com.kirozero.netzero.domain.result.dto.CreateConsumptionRecordRequest;
 import com.kirozero.netzero.domain.result.dto.CreateConsumptionRecordResponse;
+import com.kirozero.netzero.domain.result.dto.MonthlyResultSummaryResponse;
 import com.kirozero.netzero.domain.result.dto.MyResultTotalResponse;
 import com.kirozero.netzero.domain.result.dto.PhotoUrlsResponse;
 import com.kirozero.netzero.domain.result.dto.SessionResultResponse;
@@ -23,10 +24,13 @@ import com.kirozero.netzero.domain.slot.repository.SlotRepository;
 import com.kirozero.netzero.domain.user.entity.User;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.YearMonth;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -133,7 +137,7 @@ public class ConsumptionResultService {
                 .map(participant -> participant.getSlot().getId())
                 .toList();
         if (slotIds.isEmpty()) {
-            return new MyResultTotalResponse(0, BigDecimal.ZERO, BigDecimal.ZERO, 0);
+            return new MyResultTotalResponse(0, BigDecimal.ZERO, BigDecimal.ZERO, 0, List.of());
         }
 
         List<ConsumptionRecord> records = consumptionRecordRepository.findBySlotIdIn(slotIds);
@@ -147,7 +151,43 @@ public class ConsumptionResultService {
                 .mapToInt(ConsumptionRecord::getRefundAmountPerUser)
                 .sum();
 
-        return new MyResultTotalResponse(records.size(), totalUsedGrams, totalCarbon, totalRefund);
+        return new MyResultTotalResponse(
+                records.size(),
+                totalUsedGrams,
+                totalCarbon,
+                totalRefund,
+                monthlyResults(records)
+        );
+    }
+
+    private List<MonthlyResultSummaryResponse> monthlyResults(List<ConsumptionRecord> records) {
+        return records.stream()
+                .collect(Collectors.groupingBy(record -> YearMonth.from(record.getCreatedAt())))
+                .entrySet()
+                .stream()
+                .sorted(Map.Entry.<YearMonth, List<ConsumptionRecord>>comparingByKey(Comparator.reverseOrder()))
+                .map(entry -> monthlyResult(entry.getKey(), entry.getValue()))
+                .toList();
+    }
+
+    private MonthlyResultSummaryResponse monthlyResult(YearMonth yearMonth, List<ConsumptionRecord> records) {
+        BigDecimal totalUsedGrams = records.stream()
+                .map(ConsumptionRecord::getTotalUsedGrams)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal totalCarbon = records.stream()
+                .map(ConsumptionRecord::getEstimatedCarbonSavedKgco2e)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        int totalRefund = records.stream()
+                .mapToInt(ConsumptionRecord::getRefundAmountPerUser)
+                .sum();
+
+        return new MonthlyResultSummaryResponse(
+                yearMonth.toString(),
+                records.size(),
+                totalUsedGrams,
+                totalCarbon,
+                totalRefund
+        );
     }
 
     private void validateItemCoverage(

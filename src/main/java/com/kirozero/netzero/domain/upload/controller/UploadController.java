@@ -4,8 +4,10 @@ import com.kirozero.netzero.domain.upload.dto.ImageUploadResponse;
 import com.kirozero.netzero.domain.upload.enums.UploadPurpose;
 import com.kirozero.netzero.domain.upload.service.ImageUploadService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
@@ -17,9 +19,9 @@ public class UploadController {
 
     private final ImageUploadService imageUploadService;
 
-    @PostMapping
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ImageUploadResponse uploadPhoto(
-            @RequestParam("file") MultipartFile file,
+            @RequestPart("file") MultipartFile file,
             @RequestParam(defaultValue = "GENERAL") UploadPurpose purpose
     ) {
         return imageUploadService.upload(file, purpose);

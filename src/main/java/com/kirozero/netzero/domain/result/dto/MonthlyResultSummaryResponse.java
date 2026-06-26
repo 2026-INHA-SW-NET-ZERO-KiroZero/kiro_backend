@@ -1,13 +1,12 @@
 package com.kirozero.netzero.domain.result.dto;
 
 import java.math.BigDecimal;
-import java.util.List;
 
-public record MyResultTotalResponse(
+public record MonthlyResultSummaryResponse(
+        String yearMonth,
         int completedSessionCount,
         BigDecimal totalUsedGrams,
         BigDecimal totalEstimatedCarbonSavedKgco2e,
-        int totalRefundAmount,
-        List<MonthlyResultSummaryResponse> monthlyResults
+        int totalRefundAmount
 ) {
 }
