@@ -35,6 +35,5 @@ out/
 
 ### VS Code ###
 .vscode/
-docs/PRD
 
 src/main/resources/application-dev.yml
