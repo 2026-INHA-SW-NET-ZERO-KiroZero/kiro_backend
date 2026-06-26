@@ -12,5 +12,8 @@ public interface SessionIngredientRepository extends JpaRepository<SessionIngred
     @EntityGraph(attributePaths = "ingredient")
     List<SessionIngredient> findByParticipantIdOrderByIdAsc(Long participantId);
 
+    @EntityGraph(attributePaths = "ingredient")
+    List<SessionIngredient> findBySlotIdOrderByIdAsc(Long slotId);
+
     void deleteByParticipantId(Long participantId);
 }
