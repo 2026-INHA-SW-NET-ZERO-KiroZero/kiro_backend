@@ -1,9 +1,11 @@
 package com.kirozero.netzero.domain.recommendation.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kirozero.netzero.domain.auth.service.AuthService;
 import com.kirozero.netzero.domain.recommendation.dto.CandidateUsedIngredientResponse;
+import com.kirozero.netzero.domain.recommendation.dto.LatestRecommendationResponse;
 import com.kirozero.netzero.domain.recommendation.dto.MenuCandidateResponse;
 import com.kirozero.netzero.domain.recommendation.dto.PurchaseItemResponse;
 import com.kirozero.netzero.domain.recommendation.dto.RecommendationRequest;
@@ -26,6 +28,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
@@ -60,6 +63,25 @@ public class RecommendationService {
                 slot.getRecommendationCount(),
                 slot.getStatus(),
                 candidates
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public LatestRecommendationResponse getLatestRecommendation(Long slotId, String authorizationHeader) {
+        User user = authService.requireUser(authorizationHeader);
+        Slot slot = slotRepository.findById(slotId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Slot not found."));
+
+        if (!sessionParticipantRepository.existsBySlotIdAndUserId(slotId, user.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only session participants can view recommendations.");
+        }
+
+        return new LatestRecommendationResponse(
+                slot.getId(),
+                slot.getRecommendationCount(),
+                slot.getStatus(),
+                readCandidates(slot.getCandidatesJson()),
+                readSelectedMenu(slot.getSelectedMenuJson())
         );
     }
 
@@ -220,6 +242,42 @@ public class RecommendationService {
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("Candidates cannot be serialized.", e);
         }
+    }
+
+    private List<MenuCandidateResponse> readCandidates(String candidatesJson) {
+        if (!StringUtils.hasText(candidatesJson)) {
+            return List.of();
+        }
+
+        try {
+            return objectMapper.readValue(unwrapStoredJson(candidatesJson), new TypeReference<>() {
+            });
+        } catch (JsonProcessingException e) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Menu candidates cannot be parsed.", e);
+        }
+    }
+
+    private MenuCandidateResponse readSelectedMenu(String selectedMenuJson) {
+        if (!StringUtils.hasText(selectedMenuJson)) {
+            return null;
+        }
+
+        try {
+            return objectMapper.readValue(unwrapStoredJson(selectedMenuJson), MenuCandidateResponse.class);
+        } catch (JsonProcessingException e) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Selected menu cannot be parsed.", e);
+        }
+    }
+
+    private String unwrapStoredJson(String value) throws JsonProcessingException {
+        String unwrapped = value.trim();
+        for (int i = 0; i < 3; i++) {
+            if (!unwrapped.startsWith("\"") || !unwrapped.endsWith("\"")) {
+                return unwrapped;
+            }
+            unwrapped = objectMapper.readValue(unwrapped, String.class).trim();
+        }
+        return unwrapped;
     }
 
     private static class IngredientPoolItem {
