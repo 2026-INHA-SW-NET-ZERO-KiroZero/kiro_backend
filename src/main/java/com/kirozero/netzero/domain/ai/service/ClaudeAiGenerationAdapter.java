@@ -1,7 +1,6 @@
 package com.kirozero.netzero.domain.ai.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kirozero.netzero.domain.ai.config.AiGenerationProperties;
@@ -11,7 +10,12 @@ import com.kirozero.netzero.domain.ai.model.CookingGuideGenerationContext;
 import com.kirozero.netzero.domain.ai.model.MenuCandidateGenerationContext;
 import com.kirozero.netzero.domain.ai.port.AiGenerationAdapter;
 import com.kirozero.netzero.domain.cooking.dto.CookingGuideResponse;
+import com.kirozero.netzero.domain.recommendation.dto.CandidateUsedIngredientResponse;
 import com.kirozero.netzero.domain.recommendation.dto.MenuCandidateResponse;
+import com.kirozero.netzero.domain.recommendation.dto.PurchaseItemResponse;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -216,11 +220,202 @@ public class ClaudeAiGenerationAdapter implements AiGenerationAdapter {
             if (!candidatesNode.isArray()) {
                 throw new AiGenerationException("Claude menu response must be an array or contain candidates array.");
             }
-            return objectMapper.convertValue(candidatesNode, new TypeReference<>() {
-            });
+            return normalizeMenuCandidates(candidatesNode);
         } catch (JsonProcessingException | IllegalArgumentException e) {
             throw new AiGenerationException("Claude menu response cannot be parsed.", e);
         }
+    }
+
+    private List<MenuCandidateResponse> normalizeMenuCandidates(JsonNode candidatesNode) {
+        List<MenuCandidateResponse> candidates = new ArrayList<>();
+        for (int i = 0; i < candidatesNode.size() && i < 4; i++) {
+            JsonNode node = candidatesNode.get(i);
+            String label = normalizeCandidateLabel(text(node, "candidateLabel", "candidate_label", "label"), i);
+            String menuType = normalizeMenuType(text(node, "menuType", "menu_type", "type"), i);
+            candidates.add(new MenuCandidateResponse(
+                    label,
+                    defaultText(text(node, "menuName", "menu_name", "name", "title"), "AI 추천 메뉴 " + label),
+                    menuType,
+                    readUsedIngredients(node),
+                    readStringList(node, "commonKitItems", "common_kit_items", "kitItems", "kit_items"),
+                    readPurchaseItems(node),
+                    intValue(node, 35, "cookingTimeMinutes", "cooking_time_minutes", "timeMinutes"),
+                    defaultText(text(node, "difficulty", "difficultyLevel", "difficulty_level"), "LOW"),
+                    defaultText(text(node, "recommendationReason", "recommendation_reason", "reason"), "남은 재료를 활용하기 좋은 후보입니다."),
+                    defaultList(readStringList(node, "cookingOutlineSteps", "cooking_outline_steps", "steps"), List.of("재료 손질", "조리", "마무리")),
+                    defaultList(readStringList(node, "rolePlanSummary", "role_plan_summary", "roles"), List.of("손질", "조리", "정리"))
+            ));
+        }
+        return candidates;
+    }
+
+    private List<CandidateUsedIngredientResponse> readUsedIngredients(JsonNode node) {
+        JsonNode array = array(node, "usedLeftoverIngredients", "used_leftover_ingredients", "leftoverIngredients");
+        if (!array.isArray()) {
+            return List.of();
+        }
+
+        List<CandidateUsedIngredientResponse> ingredients = new ArrayList<>();
+        for (JsonNode item : array) {
+            Long ingredientId = longValue(item, null, "ingredientId", "ingredient_id", "id");
+            if (ingredientId == null) {
+                continue;
+            }
+            BigDecimal availableGrams = decimalValue(item, BigDecimal.ZERO, "availableGrams", "available_grams");
+            BigDecimal plannedUseGrams = decimalValue(item, availableGrams, "plannedUseGrams", "planned_use_grams", "useGrams");
+            BigDecimal estimatedUseRatio = decimalValue(item, null, "estimatedUseRatio", "estimated_use_ratio", "useRatio");
+            if (estimatedUseRatio == null) {
+                estimatedUseRatio = calculateUseRatio(availableGrams, plannedUseGrams);
+            }
+            ingredients.add(new CandidateUsedIngredientResponse(
+                    ingredientId,
+                    defaultText(text(item, "nameKo", "name_ko", "name"), "재료 " + ingredientId),
+                    availableGrams,
+                    plannedUseGrams,
+                    estimatedUseRatio
+            ));
+        }
+        return ingredients;
+    }
+
+    private List<PurchaseItemResponse> readPurchaseItems(JsonNode node) {
+        JsonNode array = array(node, "purchaseItems", "purchase_items");
+        if (!array.isArray()) {
+            return List.of();
+        }
+
+        List<PurchaseItemResponse> items = new ArrayList<>();
+        for (JsonNode item : array) {
+            items.add(new PurchaseItemResponse(
+                    defaultText(text(item, "name", "nameKo", "name_ko"), "추가구매"),
+                    defaultText(text(item, "category"), "OTHER"),
+                    decimalValue(item, BigDecimal.ZERO, "quantityGrams", "quantity_grams", "grams"),
+                    readStringList(item, "allergenTags", "allergen_tags"),
+                    text(item, "assignedToNickname", "assigned_to_nickname", "purchaser"),
+                    intValue(item, 0, "estimatedCost", "estimated_cost", "cost")
+            ));
+        }
+        return items;
+    }
+
+    private String normalizeCandidateLabel(String value, int index) {
+        String fallback = String.valueOf((char) ('A' + index));
+        if (!StringUtils.hasText(value)) {
+            return fallback;
+        }
+        String normalized = value.trim().toUpperCase();
+        return List.of("A", "B", "C", "D").contains(normalized) ? normalized : fallback;
+    }
+
+    private String normalizeMenuType(String value, int index) {
+        if (StringUtils.hasText(value)) {
+            String normalized = value.trim().toUpperCase();
+            if (normalized.equals("GENERAL") || normalized.equals("LOW_CARBON")) {
+                return normalized;
+            }
+        }
+        return index < 2 ? "GENERAL" : "LOW_CARBON";
+    }
+
+    private BigDecimal calculateUseRatio(BigDecimal availableGrams, BigDecimal plannedUseGrams) {
+        if (availableGrams == null || availableGrams.compareTo(BigDecimal.ZERO) <= 0) {
+            return BigDecimal.ZERO;
+        }
+        return plannedUseGrams.divide(availableGrams, 4, RoundingMode.HALF_UP);
+    }
+
+    private JsonNode array(JsonNode node, String... fieldNames) {
+        for (String fieldName : fieldNames) {
+            JsonNode value = node.path(fieldName);
+            if (value.isArray()) {
+                return value;
+            }
+        }
+        return objectMapper.createArrayNode();
+    }
+
+    private List<String> readStringList(JsonNode node, String... fieldNames) {
+        JsonNode array = array(node, fieldNames);
+        if (!array.isArray()) {
+            return List.of();
+        }
+
+        List<String> values = new ArrayList<>();
+        for (JsonNode item : array) {
+            if (StringUtils.hasText(item.asText())) {
+                values.add(item.asText().trim());
+            }
+        }
+        return values;
+    }
+
+    private String text(JsonNode node, String... fieldNames) {
+        for (String fieldName : fieldNames) {
+            JsonNode value = node.path(fieldName);
+            if (value.isTextual() && StringUtils.hasText(value.asText())) {
+                return value.asText().trim();
+            }
+        }
+        return null;
+    }
+
+    private Long longValue(JsonNode node, Long defaultValue, String... fieldNames) {
+        for (String fieldName : fieldNames) {
+            JsonNode value = node.path(fieldName);
+            if (value.isIntegralNumber()) {
+                return value.longValue();
+            }
+            if (value.isTextual() && StringUtils.hasText(value.asText())) {
+                try {
+                    return Long.parseLong(value.asText().trim());
+                } catch (NumberFormatException ignored) {
+                    return defaultValue;
+                }
+            }
+        }
+        return defaultValue;
+    }
+
+    private int intValue(JsonNode node, int defaultValue, String... fieldNames) {
+        for (String fieldName : fieldNames) {
+            JsonNode value = node.path(fieldName);
+            if (value.isNumber()) {
+                return value.intValue();
+            }
+            if (value.isTextual() && StringUtils.hasText(value.asText())) {
+                try {
+                    return Integer.parseInt(value.asText().trim());
+                } catch (NumberFormatException ignored) {
+                    return defaultValue;
+                }
+            }
+        }
+        return defaultValue;
+    }
+
+    private BigDecimal decimalValue(JsonNode node, BigDecimal defaultValue, String... fieldNames) {
+        for (String fieldName : fieldNames) {
+            JsonNode value = node.path(fieldName);
+            if (value.isNumber()) {
+                return value.decimalValue();
+            }
+            if (value.isTextual() && StringUtils.hasText(value.asText())) {
+                try {
+                    return new BigDecimal(value.asText().trim());
+                } catch (NumberFormatException ignored) {
+                    return defaultValue;
+                }
+            }
+        }
+        return defaultValue;
+    }
+
+    private String defaultText(String value, String defaultValue) {
+        return StringUtils.hasText(value) ? value : defaultValue;
+    }
+
+    private List<String> defaultList(List<String> value, List<String> defaultValue) {
+        return value == null || value.isEmpty() ? defaultValue : value;
     }
 
     private CookingGuideResponse readCookingGuide(String text) {

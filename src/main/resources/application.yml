@@ -37,7 +37,7 @@ netzero3:
       base-url: ${NETZERO3_CLAUDE_BASE_URL:https://api.anthropic.com}
       version: ${NETZERO3_CLAUDE_VERSION:2023-06-01}
       model: ${NETZERO3_CLAUDE_MODEL:claude-sonnet-4-5}
-      max-tokens: ${NETZERO3_CLAUDE_MAX_TOKENS:3000}
+      max-tokens: ${NETZERO3_CLAUDE_MAX_TOKENS:6000}
       timeout-seconds: 30
 
 springdoc:

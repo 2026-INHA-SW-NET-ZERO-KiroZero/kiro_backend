@@ -11,6 +11,8 @@ import com.kirozero.netzero.domain.cooking.dto.CookingGuideResponse;
 import com.kirozero.netzero.domain.recommendation.dto.MenuCandidateResponse;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 
@@ -18,6 +20,8 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 public class RoutingAiGenerationAdapter implements AiGenerationPort {
+
+    private static final Logger log = LoggerFactory.getLogger(RoutingAiGenerationAdapter.class);
 
     private final AiGenerationProperties properties;
     private final List<AiGenerationAdapter> adapters;
@@ -77,6 +81,10 @@ public class RoutingAiGenerationAdapter implements AiGenerationPort {
                 if (!fallbackEnabled || selected.provider() == AiProvider.STUB) {
                     throw e;
                 }
+                log.warn("AI menu generation failed with provider {}. Falling back to STUB. cause={}",
+                        selected.provider(),
+                        e.getMessage()
+                );
                 return fallback.generateMenuCandidates(context);
             }
         }
@@ -89,6 +97,10 @@ public class RoutingAiGenerationAdapter implements AiGenerationPort {
                 if (!fallbackEnabled || selected.provider() == AiProvider.STUB) {
                     throw e;
                 }
+                log.warn("AI cooking guide generation failed with provider {}. Falling back to STUB. cause={}",
+                        selected.provider(),
+                        e.getMessage()
+                );
                 return fallback.generateCookingGuide(context);
             }
         }
