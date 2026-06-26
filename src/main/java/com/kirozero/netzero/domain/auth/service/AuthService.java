@@ -4,9 +4,9 @@ import com.kirozero.netzero.domain.auth.dto.AuthResponse;
 import com.kirozero.netzero.domain.auth.dto.CurrentUserResponse;
 import com.kirozero.netzero.domain.auth.dto.LoginRequest;
 import com.kirozero.netzero.domain.auth.dto.SignupRequest;
+import com.kirozero.netzero.domain.allergy.service.AllergyTagService;
 import com.kirozero.netzero.domain.user.entity.User;
 import com.kirozero.netzero.domain.user.repository.UserRepository;
-import java.util.List;
 import java.util.Locale;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -24,6 +24,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordHashService passwordHashService;
     private final AuthTokenService authTokenService;
+    private final AllergyTagService allergyTagService;
 
     @Transactional
     public AuthResponse signup(SignupRequest request) {
@@ -40,7 +41,7 @@ public class AuthService {
                 request.nickname().trim(),
                 request.cookingSkill()
         );
-        user.replaceAllergies(normalizeTags(request.allergyTags()));
+        user.replaceAllergies(allergyTagService.normalizeAndValidate(request.allergyTags()));
 
         User savedUser = userRepository.save(user);
         String token = authTokenService.issue(savedUser);
@@ -81,18 +82,6 @@ public class AuthService {
         if (!email.endsWith("@inha.edu") && !email.endsWith("@inha.ac.kr")) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only Inha University email is allowed.");
         }
-    }
-
-    private List<String> normalizeTags(List<String> allergyTags) {
-        if (allergyTags == null) {
-            return List.of();
-        }
-
-        return allergyTags.stream()
-                .filter(StringUtils::hasText)
-                .map(String::trim)
-                .distinct()
-                .toList();
     }
 
     private String extractBearerToken(String authorizationHeader) {
