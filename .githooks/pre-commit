@@ -1,5 +1,5 @@
 #!/bin/bash
-# Pre-commit hook: 빠른 스타일 검증 (spotless)
+# Pre-commit hook: 빠른 스타일 검증 (spotless) + Claude 문맥 점검 안내
 # 실패 시 커밋 차단
 
 echo "🔍 Pre-commit: spotless 검사 실행 중..."
@@ -12,3 +12,7 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "✅ Pre-commit: spotless 통과"
+echo ""
+echo "💡 Claude에게 추가 문맥 점검을 받으려면 'pre-commit-check' 스킬을 사용하세요."
+echo "   - 시크릿/민감정보 누출 검사"
+echo "   - 커밋 메시지 품질 점검"

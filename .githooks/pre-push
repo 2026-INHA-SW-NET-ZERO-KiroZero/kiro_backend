@@ -1,5 +1,5 @@
 #!/bin/bash
-# Pre-push hook: 전체 harness 검증 (spotless + ArchUnit + 테스트)
+# Pre-push hook: 전체 harness 검증 (spotless + ArchUnit + 테스트) + Claude 정합성 점검 안내
 # 실패 시 푸시 차단
 
 echo "🔍 Pre-push: spotless + ArchUnit + 테스트 harness 검증 실행 중..."
@@ -13,3 +13,7 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "✅ Pre-push: harness 전체 검증 통과"
+echo ""
+echo "💡 Claude에게 추가 정합성 점검을 받으려면 'pre-push-check' 스킬을 사용하세요."
+echo "   - 테스트 통과 결과 해석 및 신규 @Disabled 점검"
+echo "   - docs/PRD 와 코드 변경의 정합성 점검 (필요 시 문서 업데이트 제안)"
