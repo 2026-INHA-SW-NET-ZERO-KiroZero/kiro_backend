@@ -2,6 +2,7 @@ package com.kirozero.netzero.domain.slot.controller;
 
 import com.kirozero.netzero.domain.session.dto.JoinSlotRequest;
 import com.kirozero.netzero.domain.session.dto.JoinSlotResponse;
+import com.kirozero.netzero.domain.session.dto.LeaveSlotResponse;
 import com.kirozero.netzero.domain.session.service.SessionParticipationService;
 import com.kirozero.netzero.domain.slot.dto.SlotDetailResponse;
 import com.kirozero.netzero.domain.slot.dto.SlotListResponse;
@@ -14,6 +15,7 @@ import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpHeaders;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -52,5 +54,14 @@ public class SlotController {
             @Valid @RequestBody JoinSlotRequest request
     ) {
         return sessionParticipationService.joinSlot(slotId, authorization, request);
+    }
+
+    @SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)
+    @DeleteMapping("/{slotId}/join")
+    public LeaveSlotResponse leaveSlot(
+            @PathVariable Long slotId,
+            @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization
+    ) {
+        return sessionParticipationService.leaveSlot(slotId, authorization);
     }
 }

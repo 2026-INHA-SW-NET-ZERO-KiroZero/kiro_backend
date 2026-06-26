@@ -6,6 +6,7 @@ import com.kirozero.netzero.domain.ingredient.repository.IngredientMasterReposit
 import com.kirozero.netzero.domain.session.dto.JoinIngredientRequest;
 import com.kirozero.netzero.domain.session.dto.JoinSlotRequest;
 import com.kirozero.netzero.domain.session.dto.JoinSlotResponse;
+import com.kirozero.netzero.domain.session.dto.LeaveSlotResponse;
 import com.kirozero.netzero.domain.session.dto.SessionIngredientResponse;
 import com.kirozero.netzero.domain.session.dto.UpdateSessionIngredientsRequest;
 import com.kirozero.netzero.domain.session.dto.UpdateSessionIngredientsResponse;
@@ -93,6 +94,25 @@ public class SessionParticipationService {
                         .map(SessionIngredientResponse::from)
                         .toList()
         );
+    }
+
+    @Transactional
+    public LeaveSlotResponse leaveSlot(Long slotId, String authorizationHeader) {
+        User user = authService.requireUser(authorizationHeader);
+        Slot slot = slotRepository.findById(slotId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Slot not found."));
+
+        if (slot.getStatus() != SlotStatus.OPEN) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Only OPEN slots can be left.");
+        }
+
+        SessionParticipant participant = sessionParticipantRepository.findBySlotIdAndUserId(slotId, user.getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Session participation not found."));
+
+        sessionIngredientRepository.deleteByParticipantId(participant.getId());
+        sessionParticipantRepository.delete(participant);
+
+        return new LeaveSlotResponse(slot.getId(), slot.getStatus(), true);
     }
 
     private void validateJoinable(Slot slot, User user) {
