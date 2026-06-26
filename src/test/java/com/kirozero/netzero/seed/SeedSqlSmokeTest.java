@@ -42,6 +42,7 @@ class SeedSqlSmokeTest {
     private void clearTables(JdbcTemplate jdbcTemplate) {
         jdbcTemplate.update("DELETE FROM consumption_record_items");
         jdbcTemplate.update("DELETE FROM consumption_records");
+        jdbcTemplate.update("DELETE FROM menu_votes");
         jdbcTemplate.update("DELETE FROM session_ingredients");
         jdbcTemplate.update("DELETE FROM session_participants");
         jdbcTemplate.update("DELETE FROM user_allergies");

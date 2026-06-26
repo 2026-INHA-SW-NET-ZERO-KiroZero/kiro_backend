@@ -29,8 +29,6 @@ import org.springframework.web.server.ResponseStatusException;
 @RequiredArgsConstructor
 public class MenuVoteService {
 
-    private static final int CONFIRM_THRESHOLD = 3;
-
     private final AuthService authService;
     private final SlotRepository slotRepository;
     private final SessionParticipantRepository sessionParticipantRepository;
@@ -52,7 +50,14 @@ public class MenuVoteService {
 
         List<MenuVote> votes = menuVoteRepository.findBySlotIdAndRecommendationCount(slotId, slot.getRecommendationCount());
         Map<String, Long> voteSummary = buildVoteSummary(votes);
-        MenuCandidateResponse confirmedCandidate = findConfirmedCandidate(voteSummary, candidates);
+        long participantCount = sessionParticipantRepository.countBySlotId(slot.getId());
+        MenuCandidateResponse confirmedCandidate = MenuVoteDecisionPolicy.decide(
+                        voteSummary,
+                        votes.size(),
+                        participantCount,
+                        candidates
+                )
+                .orElse(null);
 
         SelectedMenuSummaryResponse selectedMenu = null;
         if (confirmedCandidate != null) {
@@ -62,6 +67,8 @@ public class MenuVoteService {
                     confirmedCandidate.menuName(),
                     confirmedCandidate.menuType()
             );
+        } else if (votes.size() >= participantCount) {
+            slot.reopenForRecommendation();
         }
 
         return new MenuVoteResponse(
@@ -155,16 +162,6 @@ public class MenuVoteService {
             voteSummary.computeIfPresent(vote.getVoteType().name(), (ignored, count) -> count + 1);
         }
         return voteSummary;
-    }
-
-    private MenuCandidateResponse findConfirmedCandidate(
-            Map<String, Long> voteSummary,
-            List<MenuCandidateResponse> candidates
-    ) {
-        return candidates.stream()
-                .filter(candidate -> voteSummary.getOrDefault(candidate.candidateLabel(), 0L) >= CONFIRM_THRESHOLD)
-                .findFirst()
-                .orElse(null);
     }
 
     private String writeSelectedMenuJson(MenuCandidateResponse selectedMenu) {
