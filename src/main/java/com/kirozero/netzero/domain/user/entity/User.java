@@ -41,6 +41,9 @@ public class User extends BaseTimeEntity {
     @Column(name = "cooking_skill", nullable = false, length = 20)
     private CookingSkill cookingSkill;
 
+    @Column(nullable = false)
+    private int cash;
+
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<UserAllergy> allergies = new ArrayList<>();
 
@@ -49,6 +52,7 @@ public class User extends BaseTimeEntity {
         this.passwordHash = passwordHash;
         this.nickname = nickname;
         this.cookingSkill = cookingSkill;
+        this.cash = 0;
     }
 
     public static User create(String email, String passwordHash, String nickname, CookingSkill cookingSkill) {
@@ -67,5 +71,12 @@ public class User extends BaseTimeEntity {
                 .distinct()
                 .map(tag -> UserAllergy.create(this, tag))
                 .forEach(allergies::add);
+    }
+
+    public void addCash(int amount) {
+        if (amount <= 0) {
+            return;
+        }
+        this.cash += amount;
     }
 }

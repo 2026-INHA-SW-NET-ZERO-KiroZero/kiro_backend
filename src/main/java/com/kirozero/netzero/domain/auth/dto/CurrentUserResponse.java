@@ -10,6 +10,7 @@ public record CurrentUserResponse(
         String email,
         String nickname,
         CookingSkill cookingSkill,
+        int cash,
         List<String> allergyTags
 ) {
 
@@ -19,6 +20,7 @@ public record CurrentUserResponse(
                 user.getEmail(),
                 user.getNickname(),
                 user.getCookingSkill(),
+                user.getCash(),
                 user.getAllergies().stream()
                         .map(UserAllergy::getAllergenTag)
                         .toList()

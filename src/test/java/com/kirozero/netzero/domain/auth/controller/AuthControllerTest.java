@@ -45,6 +45,7 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.email").value("auth-signup@inha.edu"))
                 .andExpect(jsonPath("$.nickname").value("태훈"))
                 .andExpect(jsonPath("$.cookingSkill").value("MEDIUM"))
+                .andExpect(jsonPath("$.cash").value(0))
                 .andExpect(jsonPath("$.allergyTags", contains("crustacean_shellfish")))
                 .andExpect(jsonPath("$.token", not(emptyString())));
     }
@@ -91,6 +92,7 @@ class AuthControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.userId").isNumber())
                 .andExpect(jsonPath("$.nickname").value("양파볶는중"))
+                .andExpect(jsonPath("$.cash").value(0))
                 .andExpect(jsonPath("$.token", not(emptyString())))
                 .andReturn();
 
@@ -104,6 +106,7 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.email").value("auth-login@inha.ac.kr"))
                 .andExpect(jsonPath("$.nickname").value("양파볶는중"))
                 .andExpect(jsonPath("$.cookingSkill").value("HIGH"))
+                .andExpect(jsonPath("$.cash").value(0))
                 .andExpect(jsonPath("$.allergyTags", contains("egg", "milk")));
     }
 }

@@ -12,9 +12,10 @@ public interface SessionParticipantRepository extends JpaRepository<SessionParti
 
     boolean existsBySlotIdAndUserId(Long slotId, Long userId);
 
-    @EntityGraph(attributePaths = "user")
+    @EntityGraph(attributePaths = {"user", "user.allergies"})
     List<SessionParticipant> findBySlotIdOrderByJoinedAtAsc(Long slotId);
 
+    @EntityGraph(attributePaths = {"slot", "user", "user.allergies"})
     List<SessionParticipant> findByUserIdOrderByJoinedAtDesc(Long userId);
 
     Optional<SessionParticipant> findBySlotIdAndUserId(Long slotId, Long userId);

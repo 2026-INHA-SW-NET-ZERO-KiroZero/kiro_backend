@@ -10,6 +10,7 @@ public record AuthResponse(
         String email,
         String nickname,
         CookingSkill cookingSkill,
+        int cash,
         List<String> allergyTags,
         String token
 ) {
@@ -20,6 +21,7 @@ public record AuthResponse(
                 user.getEmail(),
                 user.getNickname(),
                 user.getCookingSkill(),
+                user.getCash(),
                 user.getAllergies().stream()
                         .map(UserAllergy::getAllergenTag)
                         .toList(),

@@ -36,6 +36,8 @@ class SlotControllerTest {
 
     @BeforeEach
     void setUp() {
+        jdbcTemplate.update("DELETE FROM consumption_record_items");
+        jdbcTemplate.update("DELETE FROM consumption_records");
         jdbcTemplate.update("DELETE FROM session_ingredients");
         jdbcTemplate.update("DELETE FROM session_participants");
         jdbcTemplate.update("DELETE FROM user_allergies");
@@ -72,6 +74,8 @@ class SlotControllerTest {
                 .andExpect(jsonPath("$.placeName").value("인하대 조리실습실"))
                 .andExpect(jsonPath("$.stationCode").value("A"))
                 .andExpect(jsonPath("$.participantCount").value(0))
+                .andExpect(jsonPath("$.joined").value(false))
+                .andExpect(jsonPath("$.myParticipantId").doesNotExist())
                 .andExpect(jsonPath("$.commonKit[4]").value("참기름"))
                 .andExpect(jsonPath("$.participants.length()").value(0));
     }
@@ -117,6 +121,40 @@ class SlotControllerTest {
     }
 
     @Test
+    void readsAuthenticatedSlotDetailWithMyJoinStateAndParticipantAllergies() throws Exception {
+        String token = signupAndGetToken("slot-auth-detail@inha.edu", "계란알러지", "[\"egg\", \"milk\"]");
+
+        MvcResult joinResult = mockMvc.perform(post("/api/v1/slots/1/join")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "canPurchase": false,
+                                  "ingredients": [
+                                    {
+                                      "ingredientId": 3,
+                                      "count": 1
+                                    }
+                                  ]
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        String participantId = joinResult.getResponse().getContentAsString()
+                .replaceAll(".*\\\"participantId\\\":(\\d+).*", "$1");
+
+        mockMvc.perform(get("/api/v1/slots/1")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.joined").value(true))
+                .andExpect(jsonPath("$.myParticipantId").value(Integer.parseInt(participantId)))
+                .andExpect(jsonPath("$.participants[0].nickname").value("계란알러지"))
+                .andExpect(jsonPath("$.participants[0].allergyTags[0]").value("egg"))
+                .andExpect(jsonPath("$.participants[0].allergyTags[1]").value("milk"));
+    }
+
+    @Test
     void rejectsJoinWithoutIngredients() throws Exception {
         String token = signupAndGetToken("slot-empty-ingredients@inha.edu");
 
@@ -133,17 +171,21 @@ class SlotControllerTest {
     }
 
     private String signupAndGetToken(String email) throws Exception {
+        return signupAndGetToken(email, "슬롯참여자", "[]");
+    }
+
+    private String signupAndGetToken(String email, String nickname, String allergyTags) throws Exception {
         MvcResult signupResult = mockMvc.perform(post("/api/v1/auth/signup")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
                                   "email": "%s",
                                   "password": "password1234",
-                                  "nickname": "슬롯참여자",
+                                  "nickname": "%s",
                                   "cookingSkill": "MEDIUM",
-                                  "allergyTags": []
+                                  "allergyTags": %s
                                 }
-                                """.formatted(email)))
+                                """.formatted(email, nickname, allergyTags)))
                 .andExpect(status().isOk())
                 .andReturn();
 
