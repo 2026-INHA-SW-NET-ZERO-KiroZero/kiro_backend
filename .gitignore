@@ -37,4 +37,4 @@ out/
 .vscode/
 docs/PRD
 
-src/main/resources/application.yml
+src/main/resources/application-dev.yml
