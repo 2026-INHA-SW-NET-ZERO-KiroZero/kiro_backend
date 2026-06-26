@@ -6,7 +6,6 @@ spring:
     active: ${SPRING_PROFILES_ACTIVE:dev}
 
   jackson:
-    property-naming-strategy: SNAKE_CASE
     default-property-inclusion: non_null
 
   servlet:
@@ -15,13 +14,31 @@ spring:
       max-request-size: 20MB
 
 netzero3:
+  auth:
+    token-secret: ${NETZERO3_AUTH_TOKEN_SECRET:dev-only-change-me}
+
+  storage:
+    s3:
+      enabled: ${NETZERO3_STORAGE_S3_ENABLED:false}
+      bucket: ${NETZERO3_STORAGE_S3_BUCKET:}
+      region: ${NETZERO3_STORAGE_S3_REGION:us-east-1}
+      public-base-url: ${NETZERO3_STORAGE_S3_PUBLIC_BASE_URL:}
+
+  aws:
+    dynamodb:
+      enabled: ${NETZERO3_DYNAMODB_ENABLED:false}
+      table-name: ${NETZERO3_DYNAMODB_TABLE_NAME:campus_sustainability_reports}
+
   llm:
-    provider: stub
+    provider: ${NETZERO3_LLM_PROVIDER:stub}
+    fallback-enabled: ${NETZERO3_LLM_FALLBACK_ENABLED:true}
     claude:
-      model: claude-sonnet-4-6
-      max-tokens: 2048
+      api-key: ${NETZERO3_CLAUDE_API_KEY:}
+      base-url: ${NETZERO3_CLAUDE_BASE_URL:https://api.anthropic.com}
+      version: ${NETZERO3_CLAUDE_VERSION:2023-06-01}
+      model: ${NETZERO3_CLAUDE_MODEL:claude-haiku-4-5}
+      max-tokens: ${NETZERO3_CLAUDE_MAX_TOKENS:2000}
       timeout-seconds: 30
-      max-retries: 2
 
 springdoc:
   api-docs:
@@ -32,4 +49,3 @@ springdoc:
     tags-sorter: alpha
     display-request-duration: true
   default-produces-media-type: application/json
-
