@@ -21,6 +21,9 @@ class SeedSqlSmokeTest {
 
     @Test
     void demoSeedLoadsWithoutCreditTransactionLedger() {
+        JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
+        clearTables(jdbcTemplate);
+
         ResourceDatabasePopulator populator = new ResourceDatabasePopulator(
                 new ClassPathResource("db/seed/001_ingredient_master_seed.sql"),
                 new ClassPathResource("db/seed/003_demo_slots_seed.sql"),
@@ -28,14 +31,21 @@ class SeedSqlSmokeTest {
         );
         populator.execute(dataSource);
 
-        JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
-
         assertThat(countRows(jdbcTemplate, "ingredient_master")).isEqualTo(100);
         assertThat(countRows(jdbcTemplate, "slots")).isEqualTo(12);
         assertThat(countRows(jdbcTemplate, "users")).isEqualTo(8);
         assertThat(countRows(jdbcTemplate, "user_allergies")).isEqualTo(3);
         assertThatThrownBy(() -> countRows(jdbcTemplate, "credit_transactions"))
                 .hasMessageContaining("credit_transactions");
+    }
+
+    private void clearTables(JdbcTemplate jdbcTemplate) {
+        jdbcTemplate.update("DELETE FROM session_ingredients");
+        jdbcTemplate.update("DELETE FROM session_participants");
+        jdbcTemplate.update("DELETE FROM user_allergies");
+        jdbcTemplate.update("DELETE FROM users");
+        jdbcTemplate.update("DELETE FROM slots");
+        jdbcTemplate.update("DELETE FROM ingredient_master");
     }
 
     private Integer countRows(JdbcTemplate jdbcTemplate, String tableName) {
