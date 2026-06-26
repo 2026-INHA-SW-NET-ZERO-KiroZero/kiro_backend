@@ -33,14 +33,14 @@ class SeedSqlSmokeTest {
         populator.execute(dataSource);
 
         assertThat(countRows(jdbcTemplate, "ingredient_master")).isEqualTo(100);
-        assertThat(countRows(jdbcTemplate, "slots")).isEqualTo(12);
+        assertThat(countRows(jdbcTemplate, "slots")).isEqualTo(14);
         assertThat(countRows(jdbcTemplate, "users")).isEqualTo(8);
         assertThat(countRows(jdbcTemplate, "user_allergies")).isEqualTo(3);
-        assertThat(countRows(jdbcTemplate, "session_participants")).isEqualTo(11);
-        assertThat(countRows(jdbcTemplate, "session_ingredients")).isEqualTo(19);
+        assertThat(countRows(jdbcTemplate, "session_participants")).isEqualTo(19);
+        assertThat(countRows(jdbcTemplate, "session_ingredients")).isEqualTo(27);
         assertThat(countRows(jdbcTemplate, "menu_votes")).isEqualTo(3);
-        assertThat(countRows(jdbcTemplate, "consumption_records")).isEqualTo(1);
-        assertThat(countRows(jdbcTemplate, "consumption_record_items")).isEqualTo(5);
+        assertThat(countRows(jdbcTemplate, "consumption_records")).isEqualTo(3);
+        assertThat(countRows(jdbcTemplate, "consumption_record_items")).isEqualTo(13);
         assertThatThrownBy(() -> countRows(jdbcTemplate, "credit_transactions"))
                 .hasMessageContaining("credit_transactions");
     }

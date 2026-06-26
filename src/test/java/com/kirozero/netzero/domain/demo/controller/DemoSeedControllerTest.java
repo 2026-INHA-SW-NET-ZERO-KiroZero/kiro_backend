@@ -28,8 +28,38 @@ class DemoSeedControllerTest {
         mockMvc.perform(post("/api/v1/demo/seed"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.createdIngredients").value(100))
-                .andExpect(jsonPath("$.createdSlots").value(12))
+                .andExpect(jsonPath("$.createdSlots").value(14))
                 .andExpect(jsonPath("$.createdUsers").value(8));
+    }
+
+    @Test
+    void seedsThreeMonthReportHistoryForDemoUsers() throws Exception {
+        mockMvc.perform(post("/api/v1/demo/seed"))
+                .andExpect(status().isOk());
+
+        MvcResult loginResult = mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email": "demo1@inha.edu",
+                                  "password": "password123"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        String token = loginResult.getResponse().getContentAsString()
+                .replaceAll(".*\\\"token\\\":\\\"([^\\\"]+)\\\".*", "$1");
+
+        mockMvc.perform(get("/api/v1/me/results/total")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.completedSessionCount").value(3))
+                .andExpect(jsonPath("$.monthlyResults.length()").value(3))
+                .andExpect(jsonPath("$.monthlyResults[0].yearMonth").value("2026-06"))
+                .andExpect(jsonPath("$.monthlyResults[1].yearMonth").value("2026-05"))
+                .andExpect(jsonPath("$.monthlyResults[2].yearMonth").value("2026-04"))
+                .andExpect(jsonPath("$.previousMonthEstimatedCarbonSavedKgco2e").value(0.8459));
     }
 
     @Test
