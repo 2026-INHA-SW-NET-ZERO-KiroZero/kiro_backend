@@ -1,6 +1,7 @@
 package com.kirozero.netzero.domain.slot.service;
 
 import com.kirozero.netzero.domain.session.entity.SessionParticipant;
+import com.kirozero.netzero.domain.session.repository.SessionIngredientRepository;
 import com.kirozero.netzero.domain.session.repository.SessionParticipantRepository;
 import com.kirozero.netzero.domain.slot.dto.SlotDetailParticipantResponse;
 import com.kirozero.netzero.domain.slot.dto.SlotDetailResponse;
@@ -26,6 +27,7 @@ public class SlotService {
 
     private final SlotRepository slotRepository;
     private final SessionParticipantRepository sessionParticipantRepository;
+    private final SessionIngredientRepository sessionIngredientRepository;
 
     @Transactional(readOnly = true)
     public SlotListResponse getSlots(LocalDate date, SlotStatus status) {
@@ -55,7 +57,10 @@ public class SlotService {
                 participants.size(),
                 COMMON_KIT,
                 participants.stream()
-                        .map(participant -> SlotDetailParticipantResponse.from(participant, 0))
+                        .map(participant -> SlotDetailParticipantResponse.from(
+                                participant,
+                                Math.toIntExact(sessionIngredientRepository.countByParticipantId(participant.getId()))
+                        ))
                         .toList()
         );
     }
