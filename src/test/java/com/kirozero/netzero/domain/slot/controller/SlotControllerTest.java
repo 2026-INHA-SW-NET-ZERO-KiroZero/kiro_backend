@@ -36,6 +36,8 @@ class SlotControllerTest {
 
     @BeforeEach
     void setUp() {
+        jdbcTemplate.update("DELETE FROM consumption_record_items");
+        jdbcTemplate.update("DELETE FROM consumption_records");
         jdbcTemplate.update("DELETE FROM session_ingredients");
         jdbcTemplate.update("DELETE FROM session_participants");
         jdbcTemplate.update("DELETE FROM user_allergies");

@@ -8,6 +8,14 @@ public record MyResultTotalResponse(
         BigDecimal totalUsedGrams,
         BigDecimal totalEstimatedCarbonSavedKgco2e,
         int totalRefundAmount,
+        int togetherPeopleCount,
+        int providedIngredientCount,
+        int usedIngredientCount,
+        int averageIngredientUseRate,
+        BigDecimal currentMonthEstimatedCarbonSavedKgco2e,
+        BigDecimal previousMonthEstimatedCarbonSavedKgco2e,
+        BigDecimal monthOverMonthCarbonDeltaKgco2e,
+        String insightMessage,
         List<MonthlyResultSummaryResponse> monthlyResults
 ) {
 }
