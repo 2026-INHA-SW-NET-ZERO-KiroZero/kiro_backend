@@ -73,6 +73,13 @@ public class RecommendationService {
         validateRecommendationRequest(slot, user, participants, ingredients);
 
         List<AiIngredient> sharedPool = buildPoolItems(ingredients);
+        Map<Long, AiIngredient> sharedPoolByIngredientId = sharedPool.stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        AiIngredient::ingredientId,
+                        item -> item,
+                        (left, right) -> left,
+                        LinkedHashMap::new
+                ));
         Set<Long> sharedPoolIngredientIds = sharedPool.stream()
                 .map(AiIngredient::ingredientId)
                 .collect(java.util.stream.Collectors.toCollection(HashSet::new));
@@ -89,9 +96,12 @@ public class RecommendationService {
                 COMMON_KIT
         );
         List<RawMenuCandidate> rawCandidates = aiGenerationPort.generateMenuCandidates(context);
+        List<RawMenuCandidate> normalizedCandidates = rawCandidates.stream()
+                .map(candidate -> MenuCandidatePolicy.normalizeCandidate(candidate, sharedPoolByIngredientId))
+                .toList();
 
         List<RawMenuCandidate> survived = filterCandidates(
-                rawCandidates,
+                normalizedCandidates,
                 sharedPoolIngredientIds,
                 unionAllergyTags,
                 ingredientAllergyMap,
@@ -222,6 +232,12 @@ public class RecommendationService {
                 log.debug("REJECT [{}] {}: uses unknown ingredientId, used={}",
                         candidate.menuType(), candidate.menuName(),
                         candidate.usedLeftoverIngredients().stream().map(u -> u.ingredientId() + "/" + u.nameKo()).toList());
+                continue;
+            }
+            if (MenuCandidatePolicy.hasBlockedLowCarbonPurchase(candidate)) {
+                log.debug("REJECT [{}] {}: low carbon candidate contains animal purchase, purchases={}",
+                        candidate.menuType(), candidate.menuName(),
+                        candidate.purchaseItems().stream().map(p -> p.name() + "/" + p.category()).toList());
                 continue;
             }
             if (conflictsWithAllergy(candidate, unionAllergyTags, ingredientAllergyMap)) {

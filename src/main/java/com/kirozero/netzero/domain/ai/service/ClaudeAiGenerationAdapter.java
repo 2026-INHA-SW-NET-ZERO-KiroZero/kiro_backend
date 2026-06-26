@@ -123,11 +123,21 @@ public class ClaudeAiGenerationAdapter implements AiGenerationAdapter {
                 조건:
                 - JSON 객체만 반환합니다.
                 - slotId와 menuName은 입력값과 같아야 합니다.
-                - steps는 PREP, COOK, FINISH를 포함하되 필요하면 더 세분화할 수 있습니다.
+                - steps는 최소 5개 이상으로 작성합니다.
+                - PREP는 2개 이상, COOK는 2개 이상, FINISH는 1개 이상 포함합니다.
+                - 각 step은 사용자가 화면을 보고 바로 움직일 수 있는 조리 지시여야 합니다.
                 - 각 step에는 참여자 전원의 participantTasks를 넣습니다.
-                - 각자의 역할이 같은 시간대에 겹치지 않게 배정합니다.
+                - 같은 step 안에서 참여자들의 역할이 겹치지 않게 배정합니다.
+                - 숙련도 HIGH 참여자는 팬 조리, 불 조절, 간 조절 같은 위험/판단 작업을 우선 배정합니다.
+                - 숙련도 LOW 참여자는 세척, 계량, 담기, 사진 기록, 정리처럼 안전한 작업을 우선 배정합니다.
+                - taskName은 "담당"처럼 추상적으로 쓰지 말고 "양배추 0.5cm 채썰기", "중불에서 감자 3분 볶기"처럼 행동으로 씁니다.
                 - taskDetail과 displayInstruction은 친절하고 구체적으로 작성합니다.
                 - "이 단계에서 왜 하는지, 어떤 재료를 몇 g 쓰는지, 어떻게 처리하는지, 주의할 점"을 포함합니다.
+                - 손질 단계에는 두께, 크기, 물기 제거, 도구를 포함합니다.
+                - 조리 단계에는 불 세기, 예상 시간, 넣는 순서, 익힘 판단 기준을 포함합니다.
+                - 마무리 단계에는 완성 사진, 식후 사진, 소진량 기록 안내를 포함합니다.
+                - usedIngredients의 ingredientId는 selectedMenu.usedLeftoverIngredients 안에 있는 값만 사용합니다.
+                - plannedUseGrams는 selectedMenu.usedLeftoverIngredients의 plannedUseGrams를 넘지 않습니다.
                 - participantId와 nickname은 입력값을 그대로 사용합니다.
 
                 반환 스키마:
@@ -173,7 +183,8 @@ public class ClaudeAiGenerationAdapter implements AiGenerationAdapter {
                 """.formatted(writeJson(context));
 
         String text = requestMessage(prompt);
-        CookingGuideResponse guide = readCookingGuide(text);
+        log.debug("Claude cooking guide raw text: {}", text);
+        CookingGuideResponse guide = CookingGuideResponseParser.parseOrFallback(text, context);
         AiResponseValidator.validateCookingGuide(guide);
         return guide;
     }
@@ -428,14 +439,6 @@ public class ClaudeAiGenerationAdapter implements AiGenerationAdapter {
 
     private List<String> defaultList(List<String> value, List<String> defaultValue) {
         return value == null || value.isEmpty() ? defaultValue : value;
-    }
-
-    private CookingGuideResponse readCookingGuide(String text) {
-        try {
-            return objectMapper.readValue(extractJsonPayload(text), CookingGuideResponse.class);
-        } catch (JsonProcessingException | IllegalArgumentException e) {
-            throw new AiGenerationException("Claude cooking guide response cannot be parsed.", e);
-        }
     }
 
     private String extractJsonPayload(String text) {
