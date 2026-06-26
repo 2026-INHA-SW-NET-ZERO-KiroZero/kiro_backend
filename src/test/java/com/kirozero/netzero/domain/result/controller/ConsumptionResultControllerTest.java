@@ -39,6 +39,7 @@ class ConsumptionResultControllerTest {
     void setUp() {
         jdbcTemplate.update("DELETE FROM consumption_record_items");
         jdbcTemplate.update("DELETE FROM consumption_records");
+        jdbcTemplate.update("DELETE FROM menu_votes");
         jdbcTemplate.update("DELETE FROM session_ingredients");
         jdbcTemplate.update("DELETE FROM session_participants");
         jdbcTemplate.update("DELETE FROM user_allergies");
@@ -95,8 +96,8 @@ class ConsumptionResultControllerTest {
         SignupResult me = signup("cash-me@inha.edu", "나");
         SignupResult mate = signup("cash-mate@inha.edu", "친구");
 
-        joinSlot(me.token(), 1, 12, 1);
-        joinSlot(mate.token(), 1, 3, 1);
+        Long mySessionIngredientId = joinSlot(me.token(), 1, 12, 1);
+        Long mateSessionIngredientId = joinSlot(mate.token(), 1, 3, 1);
         jdbcTemplate.update("""
                 UPDATE slots
                 SET status = 'MENU_PROPOSED',
@@ -128,16 +129,16 @@ class ConsumptionResultControllerTest {
                                   "afterPhotoUrl": "https://example.com/after.jpg",
                                   "items": [
                                     {
-                                      "sessionIngredientId": 1,
+                                      "sessionIngredientId": %d,
                                       "useRate": 100
                                     },
                                     {
-                                      "sessionIngredientId": 2,
+                                      "sessionIngredientId": %d,
                                       "useRate": 100
                                     }
                                   ]
                                 }
-                                """))
+                                """.formatted(mySessionIngredientId, mateSessionIngredientId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.refundScore").value(100))
                 .andExpect(jsonPath("$.refundAmountPerUser").value(1000));
@@ -174,8 +175,8 @@ class ConsumptionResultControllerTest {
         return new SignupResult(userId, token);
     }
 
-    private void joinSlot(String token, long slotId, long ingredientId, int count) throws Exception {
-        mockMvc.perform(post("/api/v1/slots/{slotId}/join", slotId)
+    private Long joinSlot(String token, long slotId, long ingredientId, int count) throws Exception {
+        MvcResult result = mockMvc.perform(post("/api/v1/slots/{slotId}/join", slotId)
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -189,7 +190,11 @@ class ConsumptionResultControllerTest {
                                   ]
                                 }
                                 """.formatted(ingredientId, count)))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andReturn();
+
+        return Long.parseLong(result.getResponse().getContentAsString()
+                .replaceAll(".*\\\"sessionIngredientId\\\":([0-9]+).*", "$1"));
     }
 
     private void insertCompletedMaySession(Long me, Long mateA, Long mateB) {

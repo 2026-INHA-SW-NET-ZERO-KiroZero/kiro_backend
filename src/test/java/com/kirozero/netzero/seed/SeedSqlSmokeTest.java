@@ -27,7 +27,8 @@ class SeedSqlSmokeTest {
         ResourceDatabasePopulator populator = new ResourceDatabasePopulator(
                 new ClassPathResource("db/seed/001_ingredient_master_seed.sql"),
                 new ClassPathResource("db/seed/003_demo_slots_seed.sql"),
-                new ClassPathResource("db/seed/004_demo_users_seed.sql")
+                new ClassPathResource("db/seed/004_demo_users_seed.sql"),
+                new ClassPathResource("db/seed/005_demo_flow_seed.sql")
         );
         populator.execute(dataSource);
 
@@ -35,6 +36,11 @@ class SeedSqlSmokeTest {
         assertThat(countRows(jdbcTemplate, "slots")).isEqualTo(12);
         assertThat(countRows(jdbcTemplate, "users")).isEqualTo(8);
         assertThat(countRows(jdbcTemplate, "user_allergies")).isEqualTo(3);
+        assertThat(countRows(jdbcTemplate, "session_participants")).isEqualTo(11);
+        assertThat(countRows(jdbcTemplate, "session_ingredients")).isEqualTo(19);
+        assertThat(countRows(jdbcTemplate, "menu_votes")).isEqualTo(3);
+        assertThat(countRows(jdbcTemplate, "consumption_records")).isEqualTo(1);
+        assertThat(countRows(jdbcTemplate, "consumption_record_items")).isEqualTo(5);
         assertThatThrownBy(() -> countRows(jdbcTemplate, "credit_transactions"))
                 .hasMessageContaining("credit_transactions");
     }
