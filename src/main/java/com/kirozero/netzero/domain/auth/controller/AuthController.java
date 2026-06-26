@@ -5,6 +5,8 @@ import com.kirozero.netzero.domain.auth.dto.CurrentUserResponse;
 import com.kirozero.netzero.domain.auth.dto.LoginRequest;
 import com.kirozero.netzero.domain.auth.dto.SignupRequest;
 import com.kirozero.netzero.domain.auth.service.AuthService;
+import com.kirozero.netzero.global.config.OpenApiConfig;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
@@ -32,6 +34,7 @@ public class AuthController {
         return authService.login(request);
     }
 
+    @SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)
     @GetMapping("/me")
     public CurrentUserResponse me(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization) {
         return authService.currentUser(authorization);

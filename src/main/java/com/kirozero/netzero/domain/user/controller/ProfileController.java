@@ -3,6 +3,8 @@ package com.kirozero.netzero.domain.user.controller;
 import com.kirozero.netzero.domain.auth.dto.CurrentUserResponse;
 import com.kirozero.netzero.domain.user.dto.UpdateProfileRequest;
 import com.kirozero.netzero.domain.user.service.ProfileService;
+import com.kirozero.netzero.global.config.OpenApiConfig;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
@@ -19,6 +21,7 @@ public class ProfileController {
 
     private final ProfileService profileService;
 
+    @SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)
     @PutMapping
     public CurrentUserResponse updateProfile(
             @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,

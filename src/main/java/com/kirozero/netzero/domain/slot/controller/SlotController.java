@@ -7,6 +7,8 @@ import com.kirozero.netzero.domain.slot.dto.SlotDetailResponse;
 import com.kirozero.netzero.domain.slot.dto.SlotListResponse;
 import com.kirozero.netzero.domain.slot.enums.SlotStatus;
 import com.kirozero.netzero.domain.slot.service.SlotService;
+import com.kirozero.netzero.global.config.OpenApiConfig;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
@@ -42,6 +44,7 @@ public class SlotController {
         return slotService.getSlot(slotId);
     }
 
+    @SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)
     @PostMapping("/{slotId}/join")
     public JoinSlotResponse joinSlot(
             @PathVariable Long slotId,
