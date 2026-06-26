@@ -62,4 +62,8 @@ public class Slot extends BaseTimeEntity {
         this.status = SlotStatus.MENU_PROPOSED;
         this.recommendationCount += 1;
     }
+
+    public void selectMenu(String selectedMenuJson) {
+        this.selectedMenuJson = selectedMenuJson;
+    }
 }
