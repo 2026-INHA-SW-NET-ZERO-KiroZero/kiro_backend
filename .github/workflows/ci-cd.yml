@@ -91,6 +91,10 @@ jobs:
             NETZERO3_AUTH_TOKEN_SECRET=${{ secrets.NETZERO3_AUTH_TOKEN_SECRET }}
             NETZERO3_STORAGE_S3_BUCKET=${{ secrets.S3_BUCKET }}
             NETZERO3_STORAGE_S3_REGION=${{ secrets.S3_REGION }}
+            NETZERO3_LLM_PROVIDER=${{ secrets.NETZERO3_LLM_PROVIDER }}
+            NETZERO3_LLM_FALLBACK_ENABLED=${{ secrets.NETZERO3_LLM_FALLBACK_ENABLED }}
+            NETZERO3_CLAUDE_API_KEY=${{ secrets.NETZERO3_CLAUDE_API_KEY }}
+            NETZERO3_CLAUDE_MODEL=${{ secrets.NETZERO3_CLAUDE_MODEL }}
             EOF
 
             cd ~/deploy
