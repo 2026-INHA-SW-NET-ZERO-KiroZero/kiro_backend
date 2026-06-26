@@ -1,6 +1,6 @@
 services:
   app:
-    build: .
+    image: ${DOCKER_USERNAME}/${DOCKER_REPO}:latest
     container_name: memoreel-backend
     environment:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
@@ -11,8 +11,8 @@ services:
       DB_DRIVER: ${DB_DRIVER:-com.mysql.cj.jdbc.Driver}
       JPA_DDL_AUTO: ${JPA_DDL_AUTO:-update}
       JPA_SHOW_SQL: ${JPA_SHOW_SQL:-false}
-      MEMOREEL_STORAGE_S3_BUCKET: ${NETZERO3_STORAGE_S3_BUCKET:netzero-03-s3}
-      MEMOREEL_STORAGE_S3_REGION: ${NETZERO3_STORAGE_S3_REGION:us-east-1}
+      NETZERO3_STORAGE_S3_BUCKET: ${NETZERO3_STORAGE_S3_BUCKET:-netzero-03-s3}
+      NETZERO3_STORAGE_S3_REGION: ${NETZERO3_STORAGE_S3_REGION:-us-east-1}
     ports:
       - "${SERVER_PORT:-8080}:${SERVER_PORT:-8080}"
     restart: unless-stopped
