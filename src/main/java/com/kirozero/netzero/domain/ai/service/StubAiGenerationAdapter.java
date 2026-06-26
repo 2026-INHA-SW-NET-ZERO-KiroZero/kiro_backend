@@ -5,13 +5,13 @@ import com.kirozero.netzero.domain.ai.model.AiIngredient;
 import com.kirozero.netzero.domain.ai.model.AiParticipant;
 import com.kirozero.netzero.domain.ai.model.CookingGuideGenerationContext;
 import com.kirozero.netzero.domain.ai.model.MenuCandidateGenerationContext;
+import com.kirozero.netzero.domain.ai.model.RawMenuCandidate;
 import com.kirozero.netzero.domain.ai.port.AiGenerationAdapter;
 import com.kirozero.netzero.domain.cooking.dto.CookingGuideResponse;
 import com.kirozero.netzero.domain.cooking.dto.CookingGuideStepResponse;
 import com.kirozero.netzero.domain.cooking.dto.CookingUsedIngredientResponse;
 import com.kirozero.netzero.domain.cooking.dto.ParticipantTaskResponse;
 import com.kirozero.netzero.domain.recommendation.dto.CandidateUsedIngredientResponse;
-import com.kirozero.netzero.domain.recommendation.dto.MenuCandidateResponse;
 import com.kirozero.netzero.domain.recommendation.dto.PurchaseItemResponse;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -30,20 +30,15 @@ public class StubAiGenerationAdapter implements AiGenerationAdapter {
     }
 
     @Override
-    public List<MenuCandidateResponse> generateMenuCandidates(MenuCandidateGenerationContext context) {
+    public List<RawMenuCandidate> generateMenuCandidates(MenuCandidateGenerationContext context) {
         List<AiIngredient> orderedIngredients = context.sharedIngredients().stream()
                 .sorted(Comparator.comparing(AiIngredient::availableGrams).reversed())
                 .toList();
         List<CandidateUsedIngredientResponse> mainUses = toCandidateUses(orderedIngredients);
-        String purchaserNickname = context.participants().stream()
-                .filter(AiParticipant::canPurchase)
-                .findFirst()
-                .map(AiParticipant::nickname)
-                .orElse(null);
+        boolean hasPurchaser = context.participants().stream().anyMatch(AiParticipant::canPurchase);
 
         return List.of(
-                new MenuCandidateResponse(
-                        "A",
+                new RawMenuCandidate(
                         "냉장고 채소 볶음밥",
                         "GENERAL",
                         mainUses,
@@ -55,21 +50,31 @@ public class StubAiGenerationAdapter implements AiGenerationAdapter {
                         List.of("재료를 비슷한 크기로 손질합니다.", "밥과 함께 볶고 간장으로 간을 맞춥니다.", "참기름으로 마무리합니다."),
                         List.of("손질", "볶기", "간 맞춤", "플레이팅")
                 ),
-                new MenuCandidateResponse(
-                        "B",
+                new RawMenuCandidate(
                         "감자 채소전",
                         "GENERAL",
                         mainUses,
                         List.of("식용유", "소금", "후추"),
-                        purchaseItems(purchaserNickname),
+                        hasPurchaser ? eggPurchaseItems() : List.of(),
                         40,
                         "MEDIUM",
                         "채소와 전분감 있는 재료를 묶어 조리하기 쉬운 일반식 후보입니다.",
                         List.of("재료를 얇게 채 썹니다.", "반죽 농도를 맞춥니다.", "앞뒤로 노릇하게 굽습니다."),
                         List.of("채썰기", "반죽", "부치기", "정리")
                 ),
-                new MenuCandidateResponse(
-                        "C",
+                new RawMenuCandidate(
+                        "닭가슴살 채소 덮밥",
+                        "GENERAL",
+                        mainUses,
+                        List.of("식용유", "간장", "후추"),
+                        hasPurchaser ? chickenPurchaseItems() : List.of(),
+                        45,
+                        "MEDIUM",
+                        "남은 채소에 닭가슴살을 더해 든든한 일반식을 제안합니다.",
+                        List.of("닭가슴살을 한입 크기로 자릅니다.", "채소와 함께 볶습니다.", "덮밥으로 마무리합니다."),
+                        List.of("손질", "볶기", "간 맞춤", "담기")
+                ),
+                new RawMenuCandidate(
                         "저탄소 채소 비빔밥",
                         "LOW_CARBON",
                         mainUses,
@@ -81,8 +86,7 @@ public class StubAiGenerationAdapter implements AiGenerationAdapter {
                         List.of("재료를 데치거나 볶습니다.", "밥 위에 재료를 올립니다.", "간장 양념으로 비빕니다."),
                         List.of("데치기", "볶기", "양념", "담기")
                 ),
-                new MenuCandidateResponse(
-                        "D",
+                new RawMenuCandidate(
                         "저탄소 채소 덮밥",
                         "LOW_CARBON",
                         mainUses,
@@ -93,6 +97,18 @@ public class StubAiGenerationAdapter implements AiGenerationAdapter {
                         "공용 키트만으로 조리 가능하고 추가구매 부담이 낮은 후보입니다.",
                         List.of("재료를 한입 크기로 썹니다.", "센 불에 빠르게 볶습니다.", "밥 위에 얹어 마무리합니다."),
                         List.of("손질", "볶기", "밥 준비", "마무리")
+                ),
+                new RawMenuCandidate(
+                        "두부 채소 볶음",
+                        "LOW_CARBON",
+                        mainUses,
+                        List.of("식용유", "간장", "참기름"),
+                        List.of(),
+                        30,
+                        "LOW",
+                        "두부와 남은 채소를 활용해 단백질과 저탄소를 함께 챙기는 후보입니다.",
+                        List.of("두부 물기를 제거합니다.", "채소와 함께 볶습니다.", "간장과 참기름으로 마무리합니다."),
+                        List.of("두부 손질", "채소 손질", "볶기", "정리")
                 )
         );
     }
@@ -133,7 +149,7 @@ public class StubAiGenerationAdapter implements AiGenerationAdapter {
                                 usedIngredients,
                                 List.of("프라이팬", "주걱", "냄비"),
                                 context.selectedMenu().commonKitItems(),
-                                buildCookTasks(context.participants(), context.selectedMenu()),
+                                buildCookTasks(context.participants(), context.selectedMenu().menuName()),
                                 "뜨거운 팬 주변에는 한 사람만 서고, 양념은 조금씩 넣어 간을 확인합니다.",
                                 "재료가 골고루 익고 메뉴의 기본 간이 맞음"
                         ),
@@ -172,18 +188,25 @@ public class StubAiGenerationAdapter implements AiGenerationAdapter {
                 .toList();
     }
 
-    private List<PurchaseItemResponse> purchaseItems(String purchaserNickname) {
-        if (purchaserNickname == null) {
-            return List.of();
-        }
-
+    private List<PurchaseItemResponse> eggPurchaseItems() {
         return List.of(new PurchaseItemResponse(
                 "계란",
                 "EGG",
                 new BigDecimal("240"),
                 List.of("egg"),
-                purchaserNickname,
+                null,
                 3000
+        ));
+    }
+
+    private List<PurchaseItemResponse> chickenPurchaseItems() {
+        return List.of(new PurchaseItemResponse(
+                "닭가슴살",
+                "POULTRY",
+                new BigDecimal("400"),
+                List.of(),
+                null,
+                6000
         ));
     }
 
@@ -212,13 +235,13 @@ public class StubAiGenerationAdapter implements AiGenerationAdapter {
 
     private List<ParticipantTaskResponse> buildCookTasks(
             List<AiParticipant> participants,
-            MenuCandidateResponse selectedMenu
+            String menuName
     ) {
         return participants.stream()
                 .map(participant -> new ParticipantTaskResponse(
                         participant.participantId(),
                         participant.nickname(),
-                        selectedMenu.menuName() + " 조리 보조",
+                        menuName + " 조리 보조",
                         "조리 흐름이 끊기지 않게 손질 재료와 공용 키트를 순서대로 전달하기 위해",
                         "메인 조리자 옆에서 재료와 양념을 순서대로 전달하고, 필요한 도구를 정리합니다.",
                         List.of("뜨거운 팬에는 손을 가까이 대지 않습니다.", "양념은 한 번에 많이 넣지 말고 조금씩 전달합니다."),

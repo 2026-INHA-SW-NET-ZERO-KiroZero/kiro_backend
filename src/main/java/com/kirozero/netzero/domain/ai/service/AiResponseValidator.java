@@ -1,35 +1,41 @@
 package com.kirozero.netzero.domain.ai.service;
 
 import com.kirozero.netzero.domain.ai.exception.AiGenerationException;
+import com.kirozero.netzero.domain.ai.model.RawMenuCandidate;
 import com.kirozero.netzero.domain.cooking.dto.CookingGuideResponse;
-import com.kirozero.netzero.domain.recommendation.dto.MenuCandidateResponse;
 import java.util.List;
 import java.util.Set;
 
 final class AiResponseValidator {
 
-    private static final Set<String> REQUIRED_LABELS = Set.of("A", "B", "C", "D");
+    private static final int RAW_CANDIDATE_COUNT = 6;
+    private static final int EXPECTED_GENERAL = 3;
+    private static final int EXPECTED_LOW_CARBON = 3;
+    private static final Set<String> ALLOWED_TYPES = Set.of("GENERAL", "LOW_CARBON");
 
     private AiResponseValidator() {
     }
 
-    static void validateMenuCandidates(List<MenuCandidateResponse> candidates) {
-        if (candidates == null || candidates.size() != 4) {
-            throw new AiGenerationException("AI menu response must contain exactly four candidates.");
+    static void validateRawCandidates(List<RawMenuCandidate> candidates) {
+        if (candidates == null || candidates.size() != RAW_CANDIDATE_COUNT) {
+            throw new AiGenerationException(
+                    "AI raw menu response must contain exactly " + RAW_CANDIDATE_COUNT + " candidates."
+            );
         }
 
-        Set<String> labels = candidates.stream()
-                .map(MenuCandidateResponse::candidateLabel)
-                .collect(java.util.stream.Collectors.toSet());
-        if (!labels.equals(REQUIRED_LABELS)) {
-            throw new AiGenerationException("AI menu response must contain A, B, C, D labels.");
+        long general = candidates.stream().filter(c -> "GENERAL".equals(c.menuType())).count();
+        long lowCarbon = candidates.stream().filter(c -> "LOW_CARBON".equals(c.menuType())).count();
+        if (general != EXPECTED_GENERAL || lowCarbon != EXPECTED_LOW_CARBON) {
+            throw new AiGenerationException(
+                    "AI raw menu response must contain 3 GENERAL and 3 LOW_CARBON candidates."
+            );
         }
 
-        for (MenuCandidateResponse candidate : candidates) {
+        for (RawMenuCandidate candidate : candidates) {
             if (isBlank(candidate.menuName()) || isBlank(candidate.menuType())) {
                 throw new AiGenerationException("AI menu response contains blank menu fields.");
             }
-            if (!candidate.menuType().equals("GENERAL") && !candidate.menuType().equals("LOW_CARBON")) {
+            if (!ALLOWED_TYPES.contains(candidate.menuType())) {
                 throw new AiGenerationException("AI menuType must be GENERAL or LOW_CARBON.");
             }
             if (candidate.usedLeftoverIngredients() == null

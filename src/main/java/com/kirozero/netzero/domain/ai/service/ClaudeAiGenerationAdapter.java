@@ -8,10 +8,10 @@ import com.kirozero.netzero.domain.ai.enums.AiProvider;
 import com.kirozero.netzero.domain.ai.exception.AiGenerationException;
 import com.kirozero.netzero.domain.ai.model.CookingGuideGenerationContext;
 import com.kirozero.netzero.domain.ai.model.MenuCandidateGenerationContext;
+import com.kirozero.netzero.domain.ai.model.RawMenuCandidate;
 import com.kirozero.netzero.domain.ai.port.AiGenerationAdapter;
 import com.kirozero.netzero.domain.cooking.dto.CookingGuideResponse;
 import com.kirozero.netzero.domain.recommendation.dto.CandidateUsedIngredientResponse;
-import com.kirozero.netzero.domain.recommendation.dto.MenuCandidateResponse;
 import com.kirozero.netzero.domain.recommendation.dto.PurchaseItemResponse;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -20,6 +20,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -30,11 +32,18 @@ import org.springframework.web.client.RestClientException;
 @RequiredArgsConstructor
 public class ClaudeAiGenerationAdapter implements AiGenerationAdapter {
 
+    private static final Logger log = LoggerFactory.getLogger(ClaudeAiGenerationAdapter.class);
+
     private static final String SYSTEM_PROMPT = """
             당신은 냉장고 반상회 서비스의 요리 추천 엔진입니다.
             사용자의 남은 식재료를 실제 조리 행동으로 연결하는 것이 목표입니다.
             반드시 요청한 JSON 스키마만 반환하고, 설명 문장이나 마크다운을 붙이지 마세요.
-            알레르기 태그와 구매 가능자를 존중하고, 저탄소 후보에는 육류/어패류 추가구매를 넣지 마세요.
+            저탄소 후보에는 육류/어패류 추가구매를 넣지 마세요.
+            매우 중요: 모든 후보는 participants 중 누구 한 명이라도 알레르기를 가진 재료/추가구매를 절대 포함하면 안 됩니다.
+            예를 들어 누군가 "egg" 알레르기면 계란/마요네즈 등 egg 태그 재료를 어떤 후보에도 쓰지 마세요.
+            누군가 "soy" 알레르기면 두부/콩나물 등 soy 태그 재료를 어떤 후보에도 쓰지 마세요.
+            sharedIngredients에 알레르기 충돌 재료가 들어 있어도, 그 재료는 후보에서 빼고 다른 재료로 6개를 만드세요.
+            추가구매 담당 배정은 백엔드가 처리하니 그 부분만 비워 두세요.
             """;
 
     private final AiGenerationProperties properties;
@@ -46,24 +55,28 @@ public class ClaudeAiGenerationAdapter implements AiGenerationAdapter {
     }
 
     @Override
-    public List<MenuCandidateResponse> generateMenuCandidates(MenuCandidateGenerationContext context) {
+    public List<RawMenuCandidate> generateMenuCandidates(MenuCandidateGenerationContext context) {
         String prompt = """
-                아래 세션 정보를 기반으로 메뉴 후보 4개를 생성하세요.
+                아래 세션 정보를 기반으로 메뉴 후보 6개를 생성하세요.
 
                 조건:
-                - JSON 배열만 반환합니다.
-                - candidateLabel은 정확히 A, B, C, D입니다.
-                - A와 B는 menuType GENERAL입니다.
-                - C와 D는 menuType LOW_CARBON입니다.
-                - usedLeftoverIngredients는 입력된 ingredientId만 사용합니다.
+                - 최상위 JSON은 {"candidates": [...]} 형태이고, 배열에는 정확히 6개 객체를 넣습니다.
+                - 6개 중 정확히 3개는 menuType "GENERAL", 3개는 "LOW_CARBON"입니다.
+                - usedLeftoverIngredients의 ingredientId는 입력된 sharedIngredients의 ingredientId 중에서만 사용합니다.
                 - plannedUseGrams는 availableGrams를 넘지 않습니다.
-                - purchaseItems는 추가구매 가능자가 있을 때만 넣습니다.
-                - LOW_CARBON 후보의 purchaseItems에는 육류/어패류를 넣지 않습니다.
-                - commonKitItems는 입력된 공용 키트 범위에서만 선택합니다.
+                - purchaseItems는 추가구매 가능자가 있을 때만 넣고, 없을 때는 빈 배열로 둡니다.
+                - LOW_CARBON 후보의 purchaseItems에는 육류/어패류 카테고리를 넣지 않습니다.
+                - commonKitItems는 입력된 commonKitItems 범위에서만 선택합니다.
+                - candidateLabel과 assignedToNickname은 비워 두세요. 백엔드가 채웁니다.
+                - 알레르기 회피: participants 배열의 모든 allergyTags 값을 합집합으로 모으세요.
+                  그 합집합 안에 들어있는 태그(예: egg, milk, soy, crustacean_shellfish 등)와 충돌하는 재료는
+                  6개 후보 어디에도 (usedLeftoverIngredients, purchaseItems 모두) 절대 넣지 마세요.
+                  예: 합집합에 "egg"가 있으면 ingredientId 41(계란)이나 마요네즈 등 어떤 형태의 계란도 사용 금지.
+                  예: 합집합에 "soy"가 있으면 ingredientId 44(두부), 4(콩나물) 등 콩 기반 재료 사용 금지.
+                  sharedIngredients에 그런 재료가 있어도 그건 모두 무시하고 나머지 재료로만 6개를 만드세요.
 
-                각 객체 스키마:
+                각 후보 객체 스키마:
                 {
-                  "candidateLabel": "A",
                   "menuName": "메뉴명",
                   "menuType": "GENERAL",
                   "usedLeftoverIngredients": [
@@ -82,7 +95,6 @@ public class ClaudeAiGenerationAdapter implements AiGenerationAdapter {
                       "category": "EGG",
                       "quantityGrams": 240.0,
                       "allergenTags": ["egg"],
-                      "assignedToNickname": "구매가능자 닉네임",
                       "estimatedCost": 3000
                     }
                   ],
@@ -98,8 +110,8 @@ public class ClaudeAiGenerationAdapter implements AiGenerationAdapter {
                 """.formatted(writeJson(context));
 
         String text = requestMessage(prompt);
-        List<MenuCandidateResponse> candidates = readMenuCandidates(text);
-        AiResponseValidator.validateMenuCandidates(candidates);
+        List<RawMenuCandidate> candidates = readRawMenuCandidates(text);
+        AiResponseValidator.validateRawCandidates(candidates);
         return candidates;
     }
 
@@ -182,7 +194,7 @@ public class ClaudeAiGenerationAdapter implements AiGenerationAdapter {
         )));
 
         try {
-            JsonNode response = RestClient.builder()
+            String responseBody = RestClient.builder()
                     .baseUrl(claude.getBaseUrl())
                     .defaultHeader("x-api-key", claude.getApiKey())
                     .defaultHeader("anthropic-version", claude.getVersion())
@@ -193,16 +205,25 @@ public class ClaudeAiGenerationAdapter implements AiGenerationAdapter {
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(body)
                     .retrieve()
-                    .body(JsonNode.class);
+                    .body(String.class);
 
-            return extractFirstText(response);
+            return extractFirstText(responseBody);
         } catch (RestClientException e) {
             throw new AiGenerationException("Claude API request failed.", e);
         }
     }
 
-    private String extractFirstText(JsonNode response) {
-        if (response == null || !response.has("content") || !response.get("content").isArray()) {
+    private String extractFirstText(String responseBody) {
+        if (!StringUtils.hasText(responseBody)) {
+            throw new AiGenerationException("Claude API response is empty.");
+        }
+        JsonNode response;
+        try {
+            response = objectMapper.readTree(responseBody);
+        } catch (JsonProcessingException e) {
+            throw new AiGenerationException("Claude API response is not valid JSON.", e);
+        }
+        if (!response.has("content") || !response.get("content").isArray()) {
             throw new AiGenerationException("Claude API response has no content array.");
         }
         for (JsonNode block : response.get("content")) {
@@ -213,28 +234,28 @@ public class ClaudeAiGenerationAdapter implements AiGenerationAdapter {
         throw new AiGenerationException("Claude API response has no text content.");
     }
 
-    private List<MenuCandidateResponse> readMenuCandidates(String text) {
+    private List<RawMenuCandidate> readRawMenuCandidates(String text) {
+        log.debug("Claude menu raw text: {}", text);
         try {
             JsonNode root = objectMapper.readTree(extractJsonPayload(text));
             JsonNode candidatesNode = root.isArray() ? root : root.path("candidates");
             if (!candidatesNode.isArray()) {
                 throw new AiGenerationException("Claude menu response must be an array or contain candidates array.");
             }
-            return normalizeMenuCandidates(candidatesNode);
+            return normalizeRawMenuCandidates(candidatesNode);
         } catch (JsonProcessingException | IllegalArgumentException e) {
-            throw new AiGenerationException("Claude menu response cannot be parsed.", e);
+            log.warn("Claude menu parse failed: {}", e.getMessage());
+            throw new AiGenerationException("Claude menu response cannot be parsed: " + e.getMessage(), e);
         }
     }
 
-    private List<MenuCandidateResponse> normalizeMenuCandidates(JsonNode candidatesNode) {
-        List<MenuCandidateResponse> candidates = new ArrayList<>();
-        for (int i = 0; i < candidatesNode.size() && i < 4; i++) {
+    private List<RawMenuCandidate> normalizeRawMenuCandidates(JsonNode candidatesNode) {
+        List<RawMenuCandidate> candidates = new ArrayList<>();
+        for (int i = 0; i < candidatesNode.size() && i < 6; i++) {
             JsonNode node = candidatesNode.get(i);
-            String label = normalizeCandidateLabel(text(node, "candidateLabel", "candidate_label", "label"), i);
             String menuType = normalizeMenuType(text(node, "menuType", "menu_type", "type"), i);
-            candidates.add(new MenuCandidateResponse(
-                    label,
-                    defaultText(text(node, "menuName", "menu_name", "name", "title"), "AI 추천 메뉴 " + label),
+            candidates.add(new RawMenuCandidate(
+                    defaultText(text(node, "menuName", "menu_name", "name", "title"), "AI 추천 메뉴"),
                     menuType,
                     readUsedIngredients(node),
                     readStringList(node, "commonKitItems", "common_kit_items", "kitItems", "kit_items"),
@@ -298,15 +319,6 @@ public class ClaudeAiGenerationAdapter implements AiGenerationAdapter {
         return items;
     }
 
-    private String normalizeCandidateLabel(String value, int index) {
-        String fallback = String.valueOf((char) ('A' + index));
-        if (!StringUtils.hasText(value)) {
-            return fallback;
-        }
-        String normalized = value.trim().toUpperCase();
-        return List.of("A", "B", "C", "D").contains(normalized) ? normalized : fallback;
-    }
-
     private String normalizeMenuType(String value, int index) {
         if (StringUtils.hasText(value)) {
             String normalized = value.trim().toUpperCase();
@@ -314,7 +326,7 @@ public class ClaudeAiGenerationAdapter implements AiGenerationAdapter {
                 return normalized;
             }
         }
-        return index < 2 ? "GENERAL" : "LOW_CARBON";
+        return index < 3 ? "GENERAL" : "LOW_CARBON";
     }
 
     private BigDecimal calculateUseRatio(BigDecimal availableGrams, BigDecimal plannedUseGrams) {

@@ -5,10 +5,10 @@ import com.kirozero.netzero.domain.ai.enums.AiProvider;
 import com.kirozero.netzero.domain.ai.exception.AiGenerationException;
 import com.kirozero.netzero.domain.ai.model.CookingGuideGenerationContext;
 import com.kirozero.netzero.domain.ai.model.MenuCandidateGenerationContext;
+import com.kirozero.netzero.domain.ai.model.RawMenuCandidate;
 import com.kirozero.netzero.domain.ai.port.AiGenerationAdapter;
 import com.kirozero.netzero.domain.ai.port.AiGenerationPort;
 import com.kirozero.netzero.domain.cooking.dto.CookingGuideResponse;
-import com.kirozero.netzero.domain.recommendation.dto.MenuCandidateResponse;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -27,7 +27,7 @@ public class RoutingAiGenerationAdapter implements AiGenerationPort {
     private final List<AiGenerationAdapter> adapters;
 
     @Override
-    public List<MenuCandidateResponse> generateMenuCandidates(MenuCandidateGenerationContext context) {
+    public List<RawMenuCandidate> generateMenuCandidates(MenuCandidateGenerationContext context) {
         return routeOrFallback(properties.getProvider()).generateMenuCandidates(context);
     }
 
@@ -74,7 +74,7 @@ public class RoutingAiGenerationAdapter implements AiGenerationPort {
         }
 
         @Override
-        public List<MenuCandidateResponse> generateMenuCandidates(MenuCandidateGenerationContext context) {
+        public List<RawMenuCandidate> generateMenuCandidates(MenuCandidateGenerationContext context) {
             try {
                 return selected.generateMenuCandidates(context);
             } catch (RuntimeException e) {

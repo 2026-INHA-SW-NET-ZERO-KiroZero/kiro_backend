@@ -37,3 +37,11 @@ out/
 .vscode/
 
 src/main/resources/application-dev.yml
+
+### Environment ###
+.env
+.env.*
+!.env.example
+
+### macOS ###
+.DS_Store
