@@ -22,6 +22,7 @@ import com.kirozero.netzero.domain.session.repository.SessionParticipantReposito
 import com.kirozero.netzero.domain.slot.entity.Slot;
 import com.kirozero.netzero.domain.slot.repository.SlotRepository;
 import com.kirozero.netzero.domain.user.entity.User;
+import com.kirozero.netzero.global.event.EventLogger;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.YearMonth;
@@ -99,11 +100,13 @@ public class ConsumptionResultService {
                 calculation.refundAmountPerUser()
         ));
 
-        consumptionRecordItemRepository.saveAll(request.items().stream()
+        List<ConsumptionRecordItem> savedItems = consumptionRecordItemRepository.saveAll(request.items().stream()
                 .map(item -> createItem(record, ingredientById.get(item.sessionIngredientId()), item.useRate()))
                 .toList());
         addRefundCashToParticipants(slotId, record.getRefundAmountPerUser());
         slot.complete();
+        emitSessionCompleted(slot, record, selectedMenu, savedItems);
+        emitIngredientUsed(slot, savedItems);
 
         return new CreateConsumptionRecordResponse(
                 record.getId(),
@@ -400,6 +403,53 @@ public class ConsumptionResultService {
         }
         sessionParticipantRepository.findBySlotIdOrderByJoinedAtAsc(slotId)
                 .forEach(participant -> participant.getUser().addCash(refundAmountPerUser));
+    }
+
+    private void emitSessionCompleted(
+            Slot slot,
+            ConsumptionRecord record,
+            MenuCandidateResponse selectedMenu,
+            List<ConsumptionRecordItem> savedItems
+    ) {
+        BigDecimal totalLeftoverInput = savedItems.stream()
+                .map(item -> item.getSessionIngredient().getEstimatedGrams())
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        int participantCount = (int) sessionParticipantRepository.countBySlotId(slot.getId());
+
+        Map<String, Object> fields = new LinkedHashMap<>();
+        fields.put("slot_id", slot.getId());
+        fields.put("date", slot.getDate().toString());
+        fields.put("place_name", slot.getPlaceName());
+        fields.put("station_code", slot.getStationCode());
+        fields.put("participant_count", participantCount);
+        fields.put("menu_name", selectedMenu.menuName());
+        fields.put("menu_type", selectedMenu.menuType());
+        fields.put("finished_food_rate", record.getFinishedFoodRate());
+        fields.put("total_leftover_input_grams", totalLeftoverInput);
+        fields.put("total_leftover_used_grams", record.getTotalUsedGrams());
+        fields.put("avg_ingredient_use_rate", record.getAvgIngredientUseRate());
+        fields.put("estimated_food_waste_reduced_grams", record.getTotalUsedGrams());
+        fields.put("estimated_carbon_saved_kgco2e", record.getEstimatedCarbonSavedKgco2e());
+        EventLogger.emit("session_completed", fields);
+    }
+
+    private void emitIngredientUsed(Slot slot, List<ConsumptionRecordItem> savedItems) {
+        for (ConsumptionRecordItem item : savedItems) {
+            SessionIngredient sessionIngredient = item.getSessionIngredient();
+            BigDecimal input = sessionIngredient.getEstimatedGrams();
+            BigDecimal used = item.getUsedGrams();
+            BigDecimal leftover = input.subtract(used).max(BigDecimal.ZERO);
+
+            Map<String, Object> fields = new LinkedHashMap<>();
+            fields.put("slot_id", slot.getId());
+            fields.put("date", slot.getDate().toString());
+            fields.put("ingredient_name", sessionIngredient.getIngredient().getNameKo());
+            fields.put("input_grams", input);
+            fields.put("used_grams", used);
+            fields.put("leftover_grams", leftover);
+            fields.put("use_rate", item.getUseRate());
+            EventLogger.emit("ingredient_used", fields);
+        }
     }
 
     private SessionResultResponse toSessionResult(

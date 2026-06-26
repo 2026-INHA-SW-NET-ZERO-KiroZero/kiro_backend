@@ -18,6 +18,7 @@ import com.kirozero.netzero.domain.slot.entity.Slot;
 import com.kirozero.netzero.domain.slot.enums.SlotStatus;
 import com.kirozero.netzero.domain.slot.repository.SlotRepository;
 import com.kirozero.netzero.domain.user.entity.User;
+import com.kirozero.netzero.global.event.EventLogger;
 import java.math.BigDecimal;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -51,6 +52,11 @@ public class SessionParticipationService {
         SessionParticipant participant = sessionParticipantRepository.save(
                 SessionParticipant.create(slot, user, request.canPurchase())
         );
+        EventLogger.emit("participant_joined", Map.of(
+                "slot_id", slot.getId(),
+                "date", slot.getDate().toString(),
+                "user_id", user.getId()
+        ));
         List<SessionIngredient> ingredients = sessionIngredientRepository.saveAll(
                 createSessionIngredients(slot, participant, request.ingredients())
         );

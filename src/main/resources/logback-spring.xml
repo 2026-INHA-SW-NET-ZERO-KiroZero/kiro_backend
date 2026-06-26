@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+  <springProperty scope="context" name="LOG_DIR" source="app.event-log-dir" defaultValue="./build/event-logs"/>
+
+  <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder>
+      <pattern>%d{HH:mm:ss.SSS} %-5level %logger{36} - %msg%n</pattern>
+    </encoder>
+  </appender>
+
+  <appender name="EVENT_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <file>${LOG_DIR}/events.jsonl</file>
+    <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+      <fileNamePattern>${LOG_DIR}/events-%d{yyyy-MM-dd, Asia/Seoul}.jsonl</fileNamePattern>
+      <maxHistory>14</maxHistory>
+    </rollingPolicy>
+    <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+      <customFields>{"app":"kiro-backend","env":"${APP_ENV:-dev}"}</customFields>
+      <timeZone>Asia/Seoul</timeZone>
+      <fieldNames>
+        <timestamp>ts</timestamp>
+        <message>msg</message>
+        <logger>[ignore]</logger>
+        <thread>[ignore]</thread>
+        <levelValue>[ignore]</levelValue>
+        <level>[ignore]</level>
+      </fieldNames>
+      <timestampPattern>yyyy-MM-dd'T'HH:mm:ss.SSSXXX</timestampPattern>
+    </encoder>
+  </appender>
+
+  <logger name="kiro.events" level="INFO" additivity="false">
+    <appender-ref ref="EVENT_FILE"/>
+  </logger>
+
+  <root level="INFO">
+    <appender-ref ref="CONSOLE"/>
+  </root>
+
+</configuration>

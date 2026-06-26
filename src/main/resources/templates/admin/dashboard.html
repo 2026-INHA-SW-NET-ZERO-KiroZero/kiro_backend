@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>임팩트 대시보드</title>
+  <link rel="stylesheet" th:href="@{/admin/admin.css}">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <header class="admin-header">
+    <div class="brand">KiroZero 관리자</div>
+    <nav class="admin-nav" aria-label="관리자 메뉴">
+      <a class="active" href="/admin/dashboard">대시보드</a>
+    </nav>
+  </header>
+
+  <div class="breadcrumbs">
+    <div><a href="/admin/dashboard">홈</a> &rsaquo; 대시보드</div>
+    <div>마지막 집계일: <span th:text="${lastUpdatedDate == null ? '없음' : lastUpdatedDate}">없음</span></div>
+  </div>
+
+  <main class="content">
+    <div class="content-header">
+      <h1>임팩트 대시보드</h1>
+      <div class="window-label">최근 30일</div>
+    </div>
+
+    <section class="kpi-grid" aria-label="임팩트 요약">
+      <article class="kpi-card">
+        <div class="kpi-label">소진한 음식</div>
+        <div class="kpi-value"><span id="kpi-food">0</span><span class="kpi-unit">kg</span></div>
+      </article>
+      <article class="kpi-card">
+        <div class="kpi-label">절감한 탄소</div>
+        <div class="kpi-value"><span id="kpi-carbon">0</span><span class="kpi-unit">kgCO2e</span></div>
+      </article>
+      <article class="kpi-card">
+        <div class="kpi-label">참여자 수</div>
+        <div class="kpi-value" id="kpi-participants">0</div>
+      </article>
+      <article class="kpi-card">
+        <div class="kpi-label">완료 세션</div>
+        <div class="kpi-value" id="kpi-sessions">0</div>
+      </article>
+      <article class="kpi-card">
+        <div class="kpi-label">나무 환산</div>
+        <div class="kpi-value"><span id="kpi-trees">0</span><span class="kpi-unit">그루</span></div>
+      </article>
+    </section>
+    <p id="impact-status" class="status" aria-live="polite"></p>
+
+    <section class="module results">
+      <h2>최근 5일 추이</h2>
+      <div class="module-body">
+        <p id="trend-status" class="status" aria-live="polite"></p>
+        <div class="chart-wrap">
+          <canvas id="trend-chart" aria-label="최근 5일 추이"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <section class="module results">
+      <h2>인기 장소 TOP 5</h2>
+      <div class="module-body">
+        <table>
+          <thead>
+            <tr><th>순위</th><th>장소</th><th>세션</th></tr>
+          </thead>
+          <tbody id="top-places-body">
+            <tr><td colspan="3" class="muted">데이터 없음</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="analytics-grid">
+      <div class="module results">
+        <h2>많이 쓴 식재료 TOP 5</h2>
+        <div class="module-body">
+          <table>
+            <thead>
+              <tr><th>순위</th><th>식재료</th><th>그램</th></tr>
+            </thead>
+            <tbody id="top-used-body">
+              <tr><td colspan="3" class="muted">데이터 없음</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="module results">
+        <h2>많이 남긴 식재료 TOP 5</h2>
+        <div class="module-body">
+          <table>
+            <thead>
+              <tr><th>순위</th><th>식재료</th><th>그램</th></tr>
+            </thead>
+            <tbody id="top-leftover-body">
+              <tr><td colspan="3" class="muted">데이터 없음</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const byId = (id) => document.getElementById(id);
+    const number = (value, digits = 0) => Number(value || 0).toLocaleString(undefined, {
+      maximumFractionDigits: digits
+    });
+    const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;'
+    })[char]);
+
+    async function fetchJson(url) {
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(String(response.status));
+      }
+      return response.json();
+    }
+
+    function renderImpact(data) {
+      byId('kpi-food').textContent = number(data.totalFoodProcessedKg, 2);
+      byId('kpi-carbon').textContent = number(data.totalCarbonSavedKgco2e, 2);
+      byId('kpi-participants').textContent = number(data.totalParticipants);
+      byId('kpi-sessions').textContent = number(data.totalCompletedSessions);
+      byId('kpi-trees').textContent = number(data.treeEquivalent, 2);
+      byId('impact-status').textContent = '';
+    }
+
+    function renderTrend(data) {
+      const canvas = byId('trend-chart');
+      new Chart(canvas, {
+        type: 'line',
+        data: {
+          labels: data.labels,
+          datasets: [
+            {
+              label: '완료 세션',
+              data: data.series.sessions,
+              borderColor: '#417690',
+              backgroundColor: 'rgba(65, 118, 144, 0.12)',
+              yAxisID: 'count',
+              tension: 0.25,
+              fill: true
+            },
+            {
+              label: '참여자',
+              data: data.series.participants,
+              borderColor: '#2f5d50',
+              backgroundColor: 'rgba(47, 93, 80, 0.08)',
+              yAxisID: 'count',
+              tension: 0.25
+            },
+            {
+              label: '소진 음식(g)',
+              data: data.series.foodGrams,
+              borderColor: '#c47f2c',
+              backgroundColor: 'rgba(196, 127, 44, 0.08)',
+              yAxisID: 'amount',
+              tension: 0.25
+            },
+            {
+              label: '탄소 절감(kg)',
+              data: data.series.carbonKg,
+              borderColor: '#7b4d8a',
+              backgroundColor: 'rgba(123, 77, 138, 0.08)',
+              yAxisID: 'amount',
+              tension: 0.25
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          scales: {
+            count: { beginAtZero: true, position: 'left' },
+            amount: { beginAtZero: true, position: 'right', grid: { drawOnChartArea: false } }
+          }
+        }
+      });
+      byId('trend-status').textContent = '';
+    }
+
+    function renderTopRows(tbodyId, rows, emptyLabel) {
+      const body = byId(tbodyId);
+      if (!rows || rows.length === 0) {
+        body.innerHTML = `<tr><td colspan="3" class="muted">${emptyLabel}</td></tr>`;
+        return;
+      }
+      body.innerHTML = rows.map((item, index) => `
+        <tr>
+          <td>${index + 1}</td>
+          <td>${escapeHtml(item.name)}</td>
+          <td>${number(item.value, 2)}</td>
+        </tr>
+      `).join('');
+    }
+
+    async function loadDashboard() {
+      const requests = [
+        fetchJson('/admin/api/metrics/impact'),
+        fetchJson('/admin/api/metrics/daily-trend'),
+        fetchJson('/admin/api/metrics/top-places'),
+        fetchJson('/admin/api/metrics/top-used-ingredients'),
+        fetchJson('/admin/api/metrics/top-leftover-ingredients')
+      ];
+      const [impact, trend, places, used, leftover] = await Promise.allSettled(requests);
+
+      if (impact.status === 'fulfilled') {
+        renderImpact(impact.value);
+      } else {
+        byId('impact-status').textContent = '임팩트 요약을 불러오지 못했습니다';
+      }
+
+      if (trend.status === 'fulfilled') {
+        renderTrend(trend.value);
+      } else {
+        byId('trend-status').textContent = '추이 데이터를 불러오지 못했습니다';
+      }
+
+      if (places.status === 'fulfilled') {
+        renderTopRows('top-places-body', places.value, '데이터 없음');
+      } else {
+        renderTopRows('top-places-body', [], '불러오지 못했습니다');
+      }
+
+      if (used.status === 'fulfilled') {
+        renderTopRows('top-used-body', used.value, '데이터 없음');
+      } else {
+        renderTopRows('top-used-body', [], '불러오지 못했습니다');
+      }
+
+      if (leftover.status === 'fulfilled') {
+        renderTopRows('top-leftover-body', leftover.value, '데이터 없음');
+      } else {
+        renderTopRows('top-leftover-body', [], '불러오지 못했습니다');
+      }
+    }
+
+    loadDashboard();
+  </script>
+</body>
+</html>

@@ -16,6 +16,10 @@ spring:
 server:
   port: ${SERVER_PORT:8080}
 
+app:
+  env: ${APP_ENV:prod}
+  event-log-dir: ${LOG_DIR:/var/log/kiro}
+
 netzero3:
   storage:
     s3:
