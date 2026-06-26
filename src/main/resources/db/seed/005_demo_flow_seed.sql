@@ -8,20 +8,20 @@ DELETE FROM consumption_record_items
 WHERE record_id IN (
     SELECT id
     FROM consumption_records
-    WHERE slot_id IN (1, 2, 12)
+    WHERE slot_id BETWEEN 1 AND 12
 );
 
 DELETE FROM consumption_records
-WHERE slot_id IN (1, 2, 12);
+WHERE slot_id BETWEEN 1 AND 12;
 
 DELETE FROM menu_votes
-WHERE slot_id IN (1, 2, 12);
+WHERE slot_id BETWEEN 1 AND 12;
 
 DELETE FROM session_ingredients
-WHERE slot_id IN (1, 2, 12);
+WHERE slot_id BETWEEN 1 AND 12;
 
 DELETE FROM session_participants
-WHERE slot_id IN (1, 2, 12);
+WHERE slot_id BETWEEN 1 AND 12;
 
 UPDATE slots
 SET status = 'OPEN',
@@ -30,7 +30,7 @@ SET status = 'OPEN',
     cooking_plan_json = NULL,
     recommendation_count = 0,
     updated_at = CURRENT_TIMESTAMP
-WHERE id IN (1, 2, 12);
+WHERE id BETWEEN 1 AND 12;
 
 INSERT INTO session_participants (
     slot_id,
