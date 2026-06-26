@@ -9,6 +9,7 @@ import com.kirozero.netzero.domain.session.entity.SessionParticipant;
 import com.kirozero.netzero.domain.session.repository.SessionIngredientRepository;
 import com.kirozero.netzero.domain.session.repository.SessionParticipantRepository;
 import com.kirozero.netzero.domain.slot.entity.Slot;
+import com.kirozero.netzero.domain.slot.enums.SlotStatus;
 import com.kirozero.netzero.domain.slot.repository.SlotRepository;
 import java.math.BigDecimal;
 import java.util.Comparator;
@@ -92,7 +93,8 @@ public class SessionQueryService {
             List<SessionParticipant> participants,
             Map<Long, List<SessionIngredient>> ingredientsByParticipantId
     ) {
-        return participants.size() == slot.getCapacity()
+        return slot.getStatus() == SlotStatus.OPEN
+                && participants.size() == slot.getCapacity()
                 && participants.stream()
                 .allMatch(participant -> !ingredientsByParticipantId
                         .getOrDefault(participant.getId(), List.of())

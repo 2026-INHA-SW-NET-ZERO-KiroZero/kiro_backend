@@ -56,4 +56,10 @@ public class Slot extends BaseTimeEntity {
 
     @Column(name = "recommendation_count", nullable = false)
     private int recommendationCount;
+
+    public void proposeMenuCandidates(String candidatesJson) {
+        this.candidatesJson = candidatesJson;
+        this.status = SlotStatus.MENU_PROPOSED;
+        this.recommendationCount += 1;
+    }
 }
