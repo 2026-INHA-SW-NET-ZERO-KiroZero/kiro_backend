@@ -30,12 +30,15 @@ netzero3:
       table-name: ${NETZERO3_DYNAMODB_TABLE_NAME:campus_sustainability_reports}
 
   llm:
-    provider: stub
+    provider: ${NETZERO3_LLM_PROVIDER:stub}
+    fallback-enabled: ${NETZERO3_LLM_FALLBACK_ENABLED:true}
     claude:
-      model: claude-sonnet-4-6
-      max-tokens: 2048
+      api-key: ${NETZERO3_CLAUDE_API_KEY:}
+      base-url: ${NETZERO3_CLAUDE_BASE_URL:https://api.anthropic.com}
+      version: ${NETZERO3_CLAUDE_VERSION:2023-06-01}
+      model: ${NETZERO3_CLAUDE_MODEL:claude-sonnet-4-5}
+      max-tokens: ${NETZERO3_CLAUDE_MAX_TOKENS:3000}
       timeout-seconds: 30
-      max-retries: 2
 
 springdoc:
   api-docs:

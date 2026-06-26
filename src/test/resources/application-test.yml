@@ -23,3 +23,7 @@ netzero3:
   aws:
     dynamodb:
       enabled: false
+
+  llm:
+    provider: stub
+    fallback-enabled: true
