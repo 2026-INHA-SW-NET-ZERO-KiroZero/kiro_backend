@@ -1,5 +1,6 @@
 package com.kirozero.netzero.domain.session.controller;
 
+import com.kirozero.netzero.domain.session.dto.SessionChecklistResponse;
 import com.kirozero.netzero.domain.session.dto.SessionStatusResponse;
 import com.kirozero.netzero.domain.session.dto.UpdateSessionIngredientsRequest;
 import com.kirozero.netzero.domain.session.dto.UpdateSessionIngredientsResponse;
@@ -29,6 +30,15 @@ public class SessionController {
     @GetMapping("/{slotId}")
     public SessionStatusResponse getSessionStatus(@PathVariable Long slotId) {
         return sessionQueryService.getSessionStatus(slotId);
+    }
+
+    @SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)
+    @GetMapping("/{slotId}/checklist")
+    public SessionChecklistResponse getChecklist(
+            @PathVariable Long slotId,
+            @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization
+    ) {
+        return sessionQueryService.getChecklist(slotId, authorization);
     }
 
     @SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)
