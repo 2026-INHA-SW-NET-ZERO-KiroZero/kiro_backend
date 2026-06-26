@@ -55,6 +55,12 @@ public class User extends BaseTimeEntity {
         return new User(email, passwordHash, nickname, cookingSkill);
     }
 
+    public void updateProfile(String nickname, CookingSkill cookingSkill, List<String> allergyTags) {
+        this.nickname = nickname;
+        this.cookingSkill = cookingSkill;
+        replaceAllergies(allergyTags);
+    }
+
     public void replaceAllergies(List<String> allergyTags) {
         allergies.clear();
         allergyTags.stream()

@@ -63,10 +63,14 @@ public class AuthService {
 
     @Transactional(readOnly = true)
     public CurrentUserResponse currentUser(String authorizationHeader) {
+        return CurrentUserResponse.from(requireUser(authorizationHeader));
+    }
+
+    @Transactional(readOnly = true)
+    public User requireUser(String authorizationHeader) {
         Long userId = authTokenService.parseUserId(extractBearerToken(authorizationHeader));
-        User user = userRepository.findWithAllergiesById(userId)
+        return userRepository.findWithAllergiesById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found."));
-        return CurrentUserResponse.from(user);
     }
 
     private String normalizeEmail(String email) {
