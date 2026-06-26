@@ -4,6 +4,7 @@ import com.kirozero.netzero.domain.session.entity.SessionIngredient;
 import java.math.BigDecimal;
 
 public record SessionIngredientStatusResponse(
+        Long sessionIngredientId,
         Long ingredientId,
         String nameKo,
         BigDecimal count,
@@ -13,6 +14,7 @@ public record SessionIngredientStatusResponse(
 
     public static SessionIngredientStatusResponse from(SessionIngredient ingredient) {
         return new SessionIngredientStatusResponse(
+                ingredient.getId(),
                 ingredient.getIngredient().getId(),
                 ingredient.getIngredient().getNameKo(),
                 ingredient.getCount(),

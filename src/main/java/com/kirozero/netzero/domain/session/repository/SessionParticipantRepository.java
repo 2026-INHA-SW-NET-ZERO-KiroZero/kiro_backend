@@ -15,5 +15,7 @@ public interface SessionParticipantRepository extends JpaRepository<SessionParti
     @EntityGraph(attributePaths = "user")
     List<SessionParticipant> findBySlotIdOrderByJoinedAtAsc(Long slotId);
 
+    List<SessionParticipant> findByUserIdOrderByJoinedAtDesc(Long userId);
+
     Optional<SessionParticipant> findBySlotIdAndUserId(Long slotId, Long userId);
 }
