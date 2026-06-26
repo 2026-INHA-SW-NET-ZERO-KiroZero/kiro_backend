@@ -78,17 +78,38 @@ class ConsumptionResultControllerTest {
                 .andExpect(jsonPath("$.previousMonthEstimatedCarbonSavedKgco2e").value(1.2))
                 .andExpect(jsonPath("$.monthOverMonthCarbonDeltaKgco2e").value(-0.4))
                 .andExpect(jsonPath("$.insightMessage").value("약 2.0kg의 탄소 배출을 줄인 셈이에요. 작은 한 끼가 모여 캠퍼스를 바꿔요."))
-                .andExpect(jsonPath("$.monthlyResults", hasSize(2)))
-                .andExpect(jsonPath("$.monthlyResults[0].yearMonth").value("2026-06"))
-                .andExpect(jsonPath("$.monthlyResults[0].monthLabel").value("6월"))
-                .andExpect(jsonPath("$.monthlyResults[0].completedSessionCount").value(1))
-                .andExpect(jsonPath("$.monthlyResults[0].togetherPeopleCount").value(2))
-                .andExpect(jsonPath("$.monthlyResults[0].providedIngredientCount").value(2))
-                .andExpect(jsonPath("$.monthlyResults[0].usedIngredientCount").value(2))
-                .andExpect(jsonPath("$.monthlyResults[0].averageIngredientUseRate").value(75))
-                .andExpect(jsonPath("$.monthlyResults[0].totalEstimatedCarbonSavedKgco2e").value(0.8))
-                .andExpect(jsonPath("$.monthlyResults[1].yearMonth").value("2026-05"))
-                .andExpect(jsonPath("$.monthlyResults[1].monthLabel").value("5월"));
+                .andExpect(jsonPath("$.monthlyResults", hasSize(6)))
+                .andExpect(jsonPath("$.monthlyResults[0].yearMonth").value("2026-01"))
+                .andExpect(jsonPath("$.monthlyResults[0].completedSessionCount").value(0))
+                .andExpect(jsonPath("$.monthlyResults[0].totalUsedGrams").value(0))
+                .andExpect(jsonPath("$.monthlyResults[4].yearMonth").value("2026-05"))
+                .andExpect(jsonPath("$.monthlyResults[4].monthLabel").value("5월"))
+                .andExpect(jsonPath("$.monthlyResults[5].yearMonth").value("2026-06"))
+                .andExpect(jsonPath("$.monthlyResults[5].monthLabel").value("6월"))
+                .andExpect(jsonPath("$.monthlyResults[5].completedSessionCount").value(1))
+                .andExpect(jsonPath("$.monthlyResults[5].togetherPeopleCount").value(2))
+                .andExpect(jsonPath("$.monthlyResults[5].providedIngredientCount").value(2))
+                .andExpect(jsonPath("$.monthlyResults[5].usedIngredientCount").value(2))
+                .andExpect(jsonPath("$.monthlyResults[5].averageIngredientUseRate").value(75))
+                .andExpect(jsonPath("$.monthlyResults[5].totalEstimatedCarbonSavedKgco2e").value(0.8));
+    }
+
+    @Test
+    void returnsZeroFilledMonthlyResultsForUserWithoutCompletedSessions() throws Exception {
+        SignupResult me = signup("report-empty@inha.edu", "빈리포트");
+
+        mockMvc.perform(get("/api/v1/me/results/total")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + me.token()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.completedSessionCount").value(0))
+                .andExpect(jsonPath("$.monthlyResults", hasSize(6)))
+                .andExpect(jsonPath("$.monthlyResults[0].yearMonth").value("2026-01"))
+                .andExpect(jsonPath("$.monthlyResults[0].monthLabel").value("1월"))
+                .andExpect(jsonPath("$.monthlyResults[0].completedSessionCount").value(0))
+                .andExpect(jsonPath("$.monthlyResults[0].totalEstimatedCarbonSavedKgco2e").value(0))
+                .andExpect(jsonPath("$.monthlyResults[5].yearMonth").value("2026-06"))
+                .andExpect(jsonPath("$.monthlyResults[5].monthLabel").value("6월"))
+                .andExpect(jsonPath("$.monthlyResults[5].completedSessionCount").value(0));
     }
 
     @Test

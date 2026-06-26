@@ -55,10 +55,12 @@ class DemoSeedControllerTest {
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.completedSessionCount").value(3))
-                .andExpect(jsonPath("$.monthlyResults.length()").value(3))
-                .andExpect(jsonPath("$.monthlyResults[0].yearMonth").value("2026-06"))
-                .andExpect(jsonPath("$.monthlyResults[1].yearMonth").value("2026-05"))
-                .andExpect(jsonPath("$.monthlyResults[2].yearMonth").value("2026-04"))
+                .andExpect(jsonPath("$.monthlyResults.length()").value(6))
+                .andExpect(jsonPath("$.monthlyResults[0].yearMonth").value("2026-01"))
+                .andExpect(jsonPath("$.monthlyResults[0].completedSessionCount").value(0))
+                .andExpect(jsonPath("$.monthlyResults[3].yearMonth").value("2026-04"))
+                .andExpect(jsonPath("$.monthlyResults[4].yearMonth").value("2026-05"))
+                .andExpect(jsonPath("$.monthlyResults[5].yearMonth").value("2026-06"))
                 .andExpect(jsonPath("$.previousMonthEstimatedCarbonSavedKgco2e").value(0.8459));
     }
 
