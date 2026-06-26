@@ -102,6 +102,7 @@ public class ConsumptionResultService {
         consumptionRecordItemRepository.saveAll(request.items().stream()
                 .map(item -> createItem(record, ingredientById.get(item.sessionIngredientId()), item.useRate()))
                 .toList());
+        addRefundCashToParticipants(slotId, record.getRefundAmountPerUser());
         slot.complete();
 
         return new CreateConsumptionRecordResponse(
@@ -391,6 +392,14 @@ public class ConsumptionResultService {
                 .multiply(BigDecimal.valueOf(refundScore))
                 .divide(BigDecimal.valueOf(100), 0, RoundingMode.HALF_UP)
                 .intValue();
+    }
+
+    private void addRefundCashToParticipants(Long slotId, int refundAmountPerUser) {
+        if (refundAmountPerUser <= 0) {
+            return;
+        }
+        sessionParticipantRepository.findBySlotIdOrderByJoinedAtAsc(slotId)
+                .forEach(participant -> participant.getUser().addCash(refundAmountPerUser));
     }
 
     private SessionResultResponse toSessionResult(

@@ -57,6 +57,7 @@ class ProfileControllerTest {
                 .andExpect(jsonPath("$.email").value("profile-update@inha.edu"))
                 .andExpect(jsonPath("$.nickname").value("양배추마스터"))
                 .andExpect(jsonPath("$.cookingSkill").value("MEDIUM"))
+                .andExpect(jsonPath("$.cash").value(0))
                 .andExpect(jsonPath("$.allergyTags", contains("soy", "milk")));
     }
 }

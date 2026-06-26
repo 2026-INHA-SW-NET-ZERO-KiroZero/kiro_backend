@@ -90,6 +90,69 @@ class ConsumptionResultControllerTest {
                 .andExpect(jsonPath("$.monthlyResults[1].monthLabel").value("5월"));
     }
 
+    @Test
+    void submitsConsumptionRecordAndAddsRefundCashToParticipants() throws Exception {
+        SignupResult me = signup("cash-me@inha.edu", "나");
+        SignupResult mate = signup("cash-mate@inha.edu", "친구");
+
+        joinSlot(me.token(), 1, 12, 1);
+        joinSlot(mate.token(), 1, 3, 1);
+        jdbcTemplate.update("""
+                UPDATE slots
+                SET status = 'MENU_PROPOSED',
+                    selected_menu_json = ?
+                WHERE id = 1
+                """, """
+                {
+                  "candidateLabel": "C",
+                  "menuName": "양배추 양파 볶음",
+                  "menuType": "LOW_CARBON",
+                  "usedLeftoverIngredients": [],
+                  "commonKitItems": ["식용유", "간장"],
+                  "purchaseItems": [],
+                  "cookingTimeMinutes": 30,
+                  "difficulty": "LOW",
+                  "recommendationReason": "남은 채소를 많이 사용할 수 있음",
+                  "cookingOutlineSteps": ["손질", "볶기"],
+                  "rolePlanSummary": ["손질", "조리"]
+                }
+                """);
+
+        mockMvc.perform(post("/api/v1/sessions/1/consumption-records")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + me.token())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "finishedFoodRate": 100,
+                                  "cookedPhotoUrl": "https://example.com/cooked.jpg",
+                                  "afterPhotoUrl": "https://example.com/after.jpg",
+                                  "items": [
+                                    {
+                                      "sessionIngredientId": 1,
+                                      "useRate": 100
+                                    },
+                                    {
+                                      "sessionIngredientId": 2,
+                                      "useRate": 100
+                                    }
+                                  ]
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.refundScore").value(100))
+                .andExpect(jsonPath("$.refundAmountPerUser").value(1000));
+
+        mockMvc.perform(get("/api/v1/auth/me")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + me.token()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.cash").value(1000));
+
+        mockMvc.perform(get("/api/v1/auth/me")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + mate.token()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.cash").value(1000));
+    }
+
     private SignupResult signup(String email, String nickname) throws Exception {
         MvcResult result = mockMvc.perform(post("/api/v1/auth/signup")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -109,6 +172,24 @@ class ConsumptionResultControllerTest {
         Long userId = Long.parseLong(body.replaceAll(".*\\\"userId\\\":([0-9]+).*", "$1"));
         String token = body.replaceAll(".*\\\"token\\\":\\\"([^\\\"]+)\\\".*", "$1");
         return new SignupResult(userId, token);
+    }
+
+    private void joinSlot(String token, long slotId, long ingredientId, int count) throws Exception {
+        mockMvc.perform(post("/api/v1/slots/{slotId}/join", slotId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "canPurchase": true,
+                                  "ingredients": [
+                                    {
+                                      "ingredientId": %d,
+                                      "count": %d
+                                    }
+                                  ]
+                                }
+                                """.formatted(ingredientId, count)))
+                .andExpect(status().isOk());
     }
 
     private void insertCompletedMaySession(Long me, Long mateA, Long mateB) {
