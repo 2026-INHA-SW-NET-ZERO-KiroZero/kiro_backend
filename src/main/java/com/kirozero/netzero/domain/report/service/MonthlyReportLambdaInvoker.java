@@ -23,8 +23,9 @@ public class MonthlyReportLambdaInvoker {
 
     private static final Logger log = LoggerFactory.getLogger(MonthlyReportLambdaInvoker.class);
 
+    private static final ObjectMapper objectMapper = new ObjectMapper();
+
     private final MonthlyReportLambdaProperties properties;
-    private final ObjectMapper objectMapper;
 
     public boolean invoke(YearMonth reportMonth, LocalDateTime triggeredAt) {
         if (!properties.isEnabled()) {
