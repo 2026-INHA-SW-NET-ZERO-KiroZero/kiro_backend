@@ -39,6 +39,7 @@ class ConsumptionResultControllerTest {
     void setUp() {
         jdbcTemplate.update("DELETE FROM consumption_record_items");
         jdbcTemplate.update("DELETE FROM consumption_records");
+        jdbcTemplate.update("DELETE FROM menu_votes");
         jdbcTemplate.update("DELETE FROM session_ingredients");
         jdbcTemplate.update("DELETE FROM session_participants");
         jdbcTemplate.update("DELETE FROM user_allergies");
@@ -77,17 +78,38 @@ class ConsumptionResultControllerTest {
                 .andExpect(jsonPath("$.previousMonthEstimatedCarbonSavedKgco2e").value(1.2))
                 .andExpect(jsonPath("$.monthOverMonthCarbonDeltaKgco2e").value(-0.4))
                 .andExpect(jsonPath("$.insightMessage").value("약 2.0kg의 탄소 배출을 줄인 셈이에요. 작은 한 끼가 모여 캠퍼스를 바꿔요."))
-                .andExpect(jsonPath("$.monthlyResults", hasSize(2)))
-                .andExpect(jsonPath("$.monthlyResults[0].yearMonth").value("2026-06"))
-                .andExpect(jsonPath("$.monthlyResults[0].monthLabel").value("6월"))
-                .andExpect(jsonPath("$.monthlyResults[0].completedSessionCount").value(1))
-                .andExpect(jsonPath("$.monthlyResults[0].togetherPeopleCount").value(2))
-                .andExpect(jsonPath("$.monthlyResults[0].providedIngredientCount").value(2))
-                .andExpect(jsonPath("$.monthlyResults[0].usedIngredientCount").value(2))
-                .andExpect(jsonPath("$.monthlyResults[0].averageIngredientUseRate").value(75))
-                .andExpect(jsonPath("$.monthlyResults[0].totalEstimatedCarbonSavedKgco2e").value(0.8))
-                .andExpect(jsonPath("$.monthlyResults[1].yearMonth").value("2026-05"))
-                .andExpect(jsonPath("$.monthlyResults[1].monthLabel").value("5월"));
+                .andExpect(jsonPath("$.monthlyResults", hasSize(6)))
+                .andExpect(jsonPath("$.monthlyResults[0].yearMonth").value("2026-01"))
+                .andExpect(jsonPath("$.monthlyResults[0].completedSessionCount").value(0))
+                .andExpect(jsonPath("$.monthlyResults[0].totalUsedGrams").value(0))
+                .andExpect(jsonPath("$.monthlyResults[4].yearMonth").value("2026-05"))
+                .andExpect(jsonPath("$.monthlyResults[4].monthLabel").value("5월"))
+                .andExpect(jsonPath("$.monthlyResults[5].yearMonth").value("2026-06"))
+                .andExpect(jsonPath("$.monthlyResults[5].monthLabel").value("6월"))
+                .andExpect(jsonPath("$.monthlyResults[5].completedSessionCount").value(1))
+                .andExpect(jsonPath("$.monthlyResults[5].togetherPeopleCount").value(2))
+                .andExpect(jsonPath("$.monthlyResults[5].providedIngredientCount").value(2))
+                .andExpect(jsonPath("$.monthlyResults[5].usedIngredientCount").value(2))
+                .andExpect(jsonPath("$.monthlyResults[5].averageIngredientUseRate").value(75))
+                .andExpect(jsonPath("$.monthlyResults[5].totalEstimatedCarbonSavedKgco2e").value(0.8));
+    }
+
+    @Test
+    void returnsZeroFilledMonthlyResultsForUserWithoutCompletedSessions() throws Exception {
+        SignupResult me = signup("report-empty@inha.edu", "빈리포트");
+
+        mockMvc.perform(get("/api/v1/me/results/total")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + me.token()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.completedSessionCount").value(0))
+                .andExpect(jsonPath("$.monthlyResults", hasSize(6)))
+                .andExpect(jsonPath("$.monthlyResults[0].yearMonth").value("2026-01"))
+                .andExpect(jsonPath("$.monthlyResults[0].monthLabel").value("1월"))
+                .andExpect(jsonPath("$.monthlyResults[0].completedSessionCount").value(0))
+                .andExpect(jsonPath("$.monthlyResults[0].totalEstimatedCarbonSavedKgco2e").value(0))
+                .andExpect(jsonPath("$.monthlyResults[5].yearMonth").value("2026-06"))
+                .andExpect(jsonPath("$.monthlyResults[5].monthLabel").value("6월"))
+                .andExpect(jsonPath("$.monthlyResults[5].completedSessionCount").value(0));
     }
 
     @Test
@@ -95,8 +117,8 @@ class ConsumptionResultControllerTest {
         SignupResult me = signup("cash-me@inha.edu", "나");
         SignupResult mate = signup("cash-mate@inha.edu", "친구");
 
-        joinSlot(me.token(), 1, 12, 1);
-        joinSlot(mate.token(), 1, 3, 1);
+        Long mySessionIngredientId = joinSlot(me.token(), 1, 12, 1);
+        Long mateSessionIngredientId = joinSlot(mate.token(), 1, 3, 1);
         jdbcTemplate.update("""
                 UPDATE slots
                 SET status = 'MENU_PROPOSED',
@@ -128,16 +150,16 @@ class ConsumptionResultControllerTest {
                                   "afterPhotoUrl": "https://example.com/after.jpg",
                                   "items": [
                                     {
-                                      "sessionIngredientId": 1,
+                                      "sessionIngredientId": %d,
                                       "useRate": 100
                                     },
                                     {
-                                      "sessionIngredientId": 2,
+                                      "sessionIngredientId": %d,
                                       "useRate": 100
                                     }
                                   ]
                                 }
-                                """))
+                                """.formatted(mySessionIngredientId, mateSessionIngredientId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.refundScore").value(100))
                 .andExpect(jsonPath("$.refundAmountPerUser").value(1000));
@@ -174,8 +196,8 @@ class ConsumptionResultControllerTest {
         return new SignupResult(userId, token);
     }
 
-    private void joinSlot(String token, long slotId, long ingredientId, int count) throws Exception {
-        mockMvc.perform(post("/api/v1/slots/{slotId}/join", slotId)
+    private Long joinSlot(String token, long slotId, long ingredientId, int count) throws Exception {
+        MvcResult result = mockMvc.perform(post("/api/v1/slots/{slotId}/join", slotId)
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -189,7 +211,11 @@ class ConsumptionResultControllerTest {
                                   ]
                                 }
                                 """.formatted(ingredientId, count)))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andReturn();
+
+        return Long.parseLong(result.getResponse().getContentAsString()
+                .replaceAll(".*\\\"sessionIngredientId\\\":([0-9]+).*", "$1"));
     }
 
     private void insertCompletedMaySession(Long me, Long mateA, Long mateB) {

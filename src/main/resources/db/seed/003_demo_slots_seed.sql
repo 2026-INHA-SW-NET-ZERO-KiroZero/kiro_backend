@@ -55,5 +55,8 @@ ON DUPLICATE KEY UPDATE
     station_code = VALUES(station_code),
     capacity = VALUES(capacity),
     status = VALUES(status),
+    candidates_json = NULL,
+    selected_menu_json = NULL,
+    cooking_plan_json = NULL,
     recommendation_count = VALUES(recommendation_count),
     updated_at = VALUES(updated_at);

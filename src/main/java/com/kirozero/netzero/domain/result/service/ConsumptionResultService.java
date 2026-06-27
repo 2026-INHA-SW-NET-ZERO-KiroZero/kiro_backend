@@ -27,7 +27,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
-import java.util.Comparator;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -48,6 +48,8 @@ public class ConsumptionResultService {
     private static final int BASE_RESERVATION_CREDIT = 2000;
     private static final BigDecimal MAX_REFUND_RATE = new BigDecimal("0.50");
     private static final DateTimeFormatter MONTH_LABEL_FORMATTER = DateTimeFormatter.ofPattern("M월");
+    private static final YearMonth REPORT_START_MONTH = YearMonth.of(2026, 1);
+    private static final YearMonth MIN_REPORT_END_MONTH = YearMonth.of(2026, 6);
 
     private final AuthService authService;
     private final SlotRepository slotRepository;
@@ -194,7 +196,7 @@ public class ConsumptionResultService {
                 BigDecimal.ZERO,
                 BigDecimal.ZERO,
                 insightMessage(BigDecimal.ZERO),
-                List.of()
+                monthlyResults(List.of(), Map.of())
         );
     }
 
@@ -202,13 +204,17 @@ public class ConsumptionResultService {
             List<ConsumptionRecord> records,
             Map<Long, List<ConsumptionRecordItem>> itemsByRecordId
     ) {
-        return records.stream()
-                .collect(Collectors.groupingBy(record -> YearMonth.from(record.getCreatedAt())))
-                .entrySet()
-                .stream()
-                .sorted(Map.Entry.<YearMonth, List<ConsumptionRecord>>comparingByKey(Comparator.reverseOrder()))
-                .map(entry -> monthlyResult(entry.getKey(), entry.getValue(), itemsByRecordId))
-                .toList();
+        Map<YearMonth, List<ConsumptionRecord>> recordsByMonth = records.stream()
+                .collect(Collectors.groupingBy(record -> YearMonth.from(record.getCreatedAt())));
+
+        YearMonth endMonth = reportEndMonth(records);
+        List<MonthlyResultSummaryResponse> results = new ArrayList<>();
+        YearMonth cursor = REPORT_START_MONTH;
+        while (!cursor.isAfter(endMonth)) {
+            results.add(monthlyResult(cursor, recordsByMonth.getOrDefault(cursor, List.of()), itemsByRecordId));
+            cursor = cursor.plusMonths(1);
+        }
+        return results;
     }
 
     private MonthlyResultSummaryResponse monthlyResult(
@@ -279,20 +285,28 @@ public class ConsumptionResultService {
         if (monthlyResults.isEmpty()) {
             return BigDecimal.ZERO;
         }
-        return monthlyResults.get(0).totalEstimatedCarbonSavedKgco2e();
+        return monthlyResults.get(monthlyResults.size() - 1).totalEstimatedCarbonSavedKgco2e();
     }
 
     private BigDecimal previousMonthCarbon(List<MonthlyResultSummaryResponse> monthlyResults) {
-        if (monthlyResults.isEmpty()) {
+        if (monthlyResults.size() < 2) {
             return BigDecimal.ZERO;
         }
-        YearMonth currentMonth = YearMonth.parse(monthlyResults.get(0).yearMonth());
+        YearMonth currentMonth = YearMonth.parse(monthlyResults.get(monthlyResults.size() - 1).yearMonth());
         YearMonth previousMonth = currentMonth.minusMonths(1);
         return monthlyResults.stream()
                 .filter(item -> YearMonth.parse(item.yearMonth()).equals(previousMonth))
                 .findFirst()
                 .map(MonthlyResultSummaryResponse::totalEstimatedCarbonSavedKgco2e)
                 .orElse(BigDecimal.ZERO);
+    }
+
+    private YearMonth reportEndMonth(List<ConsumptionRecord> records) {
+        return records.stream()
+                .map(record -> YearMonth.from(record.getCreatedAt()))
+                .max(YearMonth::compareTo)
+                .filter(month -> month.isAfter(MIN_REPORT_END_MONTH))
+                .orElse(MIN_REPORT_END_MONTH);
     }
 
     private String insightMessage(BigDecimal totalCarbon) {
