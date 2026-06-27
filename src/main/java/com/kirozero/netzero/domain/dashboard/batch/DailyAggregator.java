@@ -13,19 +13,28 @@ public class DailyAggregator {
     private static final String METRIC_UPSERT = """
             INSERT INTO dashboard_daily_metric
               (event_date, completed_session_count, participant_count,
-               total_food_grams, total_carbon_kgco2e, updated_at)
+               total_food_grams, total_carbon_kgco2e, avg_ingredient_use_rate,
+               low_carbon_session_count, total_refund_amount, avg_refund_amount, updated_at)
             SELECT
               :d,
               (SELECT COUNT(*) FROM event_session_completed_raw WHERE event_date = :d),
               (SELECT COUNT(*) FROM event_participant_joined_raw WHERE event_date = :d),
               COALESCE((SELECT SUM(total_leftover_used_grams) FROM event_session_completed_raw WHERE event_date = :d), 0),
               COALESCE((SELECT SUM(estimated_carbon_saved_kgco2e) FROM event_session_completed_raw WHERE event_date = :d), 0),
+              COALESCE((SELECT AVG(avg_ingredient_use_rate) FROM event_session_completed_raw WHERE event_date = :d), 0),
+              COALESCE((SELECT SUM(CASE WHEN menu_type = 'LOW_CARBON' THEN 1 ELSE 0 END) FROM event_session_completed_raw WHERE event_date = :d), 0),
+              COALESCE((SELECT SUM(total_refund_amount) FROM event_session_completed_raw WHERE event_date = :d), 0),
+              COALESCE((SELECT AVG(total_refund_amount) FROM event_session_completed_raw WHERE event_date = :d), 0),
               NOW()
             ON DUPLICATE KEY UPDATE
               completed_session_count = VALUES(completed_session_count),
               participant_count       = VALUES(participant_count),
               total_food_grams        = VALUES(total_food_grams),
               total_carbon_kgco2e     = VALUES(total_carbon_kgco2e),
+              avg_ingredient_use_rate = VALUES(avg_ingredient_use_rate),
+              low_carbon_session_count = VALUES(low_carbon_session_count),
+              total_refund_amount      = VALUES(total_refund_amount),
+              avg_refund_amount        = VALUES(avg_refund_amount),
               updated_at              = VALUES(updated_at)
             """;
 

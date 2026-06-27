@@ -33,6 +33,18 @@ public class DashboardDailyMetric {
     @Column(name = "total_carbon_kgco2e", nullable = false, precision = 12, scale = 3)
     private BigDecimal totalCarbonKgco2e;
 
+    @Column(name = "avg_ingredient_use_rate", precision = 5, scale = 2)
+    private BigDecimal avgIngredientUseRate;
+
+    @Column(name = "low_carbon_session_count")
+    private Integer lowCarbonSessionCount;
+
+    @Column(name = "total_refund_amount")
+    private Integer totalRefundAmount;
+
+    @Column(name = "avg_refund_amount", precision = 12, scale = 2)
+    private BigDecimal avgRefundAmount;
+
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 }

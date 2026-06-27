@@ -13,7 +13,13 @@ public interface DashboardDailyIngredientRepository
         extends JpaRepository<DashboardDailyIngredient, DashboardDailyIngredientId> {
 
     @Query("""
-            select i.ingredientName, sum(i.totalUsedGrams)
+            select i.ingredientName,
+                   sum(i.totalUsedGrams) + sum(i.totalLeftoverGrams),
+                   sum(i.totalLeftoverGrams),
+                   case
+                       when (sum(i.totalUsedGrams) + sum(i.totalLeftoverGrams)) = 0 then 0
+                       else (sum(i.totalLeftoverGrams) * 100.0 / (sum(i.totalUsedGrams) + sum(i.totalLeftoverGrams)))
+                   end
             from DashboardDailyIngredient i
             where i.eventDate >= :from
             group by i.ingredientName
@@ -22,11 +28,21 @@ public interface DashboardDailyIngredientRepository
     List<Object[]> findTopUsedIngredients(@Param("from") LocalDate from, Pageable pageable);
 
     @Query("""
-            select i.ingredientName, sum(i.totalLeftoverGrams)
+            select i.ingredientName,
+                   sum(i.totalUsedGrams) + sum(i.totalLeftoverGrams),
+                   sum(i.totalLeftoverGrams),
+                   case
+                       when (sum(i.totalUsedGrams) + sum(i.totalLeftoverGrams)) = 0 then 0
+                       else (sum(i.totalLeftoverGrams) * 100.0 / (sum(i.totalUsedGrams) + sum(i.totalLeftoverGrams)))
+                   end
             from DashboardDailyIngredient i
             where i.eventDate >= :from
             group by i.ingredientName
-            order by sum(i.totalLeftoverGrams) desc
+            order by
+                case
+                    when (sum(i.totalUsedGrams) + sum(i.totalLeftoverGrams)) = 0 then 0
+                    else (sum(i.totalLeftoverGrams) * 100.0 / (sum(i.totalUsedGrams) + sum(i.totalLeftoverGrams)))
+                end desc
             """)
     List<Object[]> findTopLeftoverIngredients(@Param("from") LocalDate from, Pageable pageable);
 }

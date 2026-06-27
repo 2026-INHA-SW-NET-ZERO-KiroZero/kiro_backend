@@ -3,6 +3,7 @@ package com.kirozero.netzero.domain.dashboard.controller;
 import com.kirozero.netzero.domain.dashboard.batch.LogIngestScheduler;
 import com.kirozero.netzero.domain.dashboard.dto.DailyTrendResponse;
 import com.kirozero.netzero.domain.dashboard.dto.ImpactSummaryResponse;
+import com.kirozero.netzero.domain.dashboard.dto.TopIngredientResponse;
 import com.kirozero.netzero.domain.dashboard.dto.TopItemResponse;
 import com.kirozero.netzero.domain.dashboard.service.DashboardQueryService;
 import java.time.LocalDate;
@@ -40,12 +41,12 @@ public class DashboardApiController {
     }
 
     @GetMapping("/metrics/top-used-ingredients")
-    public List<TopItemResponse> topUsedIngredients() {
+    public List<TopIngredientResponse> topUsedIngredients() {
         return queryService.topUsedIngredients();
     }
 
     @GetMapping("/metrics/top-leftover-ingredients")
-    public List<TopItemResponse> topLeftoverIngredients() {
+    public List<TopIngredientResponse> topLeftoverIngredients() {
         return queryService.topLeftoverIngredients();
     }
 

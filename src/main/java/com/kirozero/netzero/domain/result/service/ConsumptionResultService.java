@@ -430,6 +430,8 @@ public class ConsumptionResultService {
         fields.put("avg_ingredient_use_rate", record.getAvgIngredientUseRate());
         fields.put("estimated_food_waste_reduced_grams", record.getTotalUsedGrams());
         fields.put("estimated_carbon_saved_kgco2e", record.getEstimatedCarbonSavedKgco2e());
+        fields.put("refund_amount_per_user", record.getRefundAmountPerUser());
+        fields.put("total_refund_amount", record.getRefundAmountPerUser() * participantCount);
         EventLogger.emit("session_completed", fields);
     }
 

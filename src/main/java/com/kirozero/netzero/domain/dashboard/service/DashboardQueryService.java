@@ -2,6 +2,7 @@ package com.kirozero.netzero.domain.dashboard.service;
 
 import com.kirozero.netzero.domain.dashboard.dto.DailyTrendResponse;
 import com.kirozero.netzero.domain.dashboard.dto.ImpactSummaryResponse;
+import com.kirozero.netzero.domain.dashboard.dto.TopIngredientResponse;
 import com.kirozero.netzero.domain.dashboard.dto.TopItemResponse;
 import com.kirozero.netzero.domain.dashboard.entity.DashboardDailyMetric;
 import com.kirozero.netzero.domain.dashboard.repository.BatchJobHistoryRepository;
@@ -52,15 +53,40 @@ public class DashboardQueryService {
         BigDecimal carbonKg = metrics.stream()
                 .map(DashboardDailyMetric::getTotalCarbonKgco2e)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal weightedUseRate = metrics.stream()
+                .map(metric -> nullToZero(metric.getAvgIngredientUseRate())
+                        .multiply(BigDecimal.valueOf(metric.getCompletedSessionCount())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        long lowCarbonSessions = metrics.stream()
+                .mapToLong(metric -> metric.getLowCarbonSessionCount() == null ? 0 : metric.getLowCarbonSessionCount())
+                .sum();
+        long totalRefund = metrics.stream()
+                .mapToLong(metric -> metric.getTotalRefundAmount() == null ? 0 : metric.getTotalRefundAmount())
+                .sum();
         BigDecimal foodKg = foodGrams.divide(GRAMS_PER_KG, 4, RoundingMode.HALF_UP);
         BigDecimal treeEquivalent = carbonKg.divide(KGCO2E_PER_TREE, 4, RoundingMode.HALF_UP);
+        BigDecimal averageUseRate = sessions == 0
+                ? BigDecimal.ZERO
+                : weightedUseRate.divide(BigDecimal.valueOf(sessions), 4, RoundingMode.HALF_UP);
+        BigDecimal lowCarbonRate = sessions == 0
+                ? BigDecimal.ZERO
+                : BigDecimal.valueOf(lowCarbonSessions)
+                .multiply(BigDecimal.valueOf(100))
+                .divide(BigDecimal.valueOf(sessions), 4, RoundingMode.HALF_UP);
+        BigDecimal averageRefund = sessions == 0
+                ? BigDecimal.ZERO
+                : BigDecimal.valueOf(totalRefund).divide(BigDecimal.valueOf(sessions), 2, RoundingMode.HALF_UP);
 
         return new ImpactSummaryResponse(
                 round(foodKg, 2),
                 round(carbonKg, 2),
                 participants,
                 sessions,
-                round(treeEquivalent, 2)
+                round(treeEquivalent, 2),
+                round(averageUseRate, 1),
+                round(lowCarbonRate, 1),
+                totalRefund,
+                round(averageRefund, 0)
         );
     }
 
@@ -74,8 +100,8 @@ public class DashboardQueryService {
         List<String> labels = new ArrayList<>();
         List<Long> sessions = new ArrayList<>();
         List<Long> participants = new ArrayList<>();
-        List<Double> foodGrams = new ArrayList<>();
-        List<Double> carbonKg = new ArrayList<>();
+        List<Double> ingredientUsedKg = new ArrayList<>();
+        List<Double> carbonReductionKgco2e = new ArrayList<>();
 
         for (int i = 0; i < 5; i++) {
             LocalDate date = from.plusDays(i);
@@ -83,13 +109,14 @@ public class DashboardQueryService {
             labels.add(date.toString());
             sessions.add(metric == null ? 0L : (long) metric.getCompletedSessionCount());
             participants.add(metric == null ? 0L : (long) metric.getParticipantCount());
-            foodGrams.add(metric == null ? 0.0 : round(metric.getTotalFoodGrams(), 2));
-            carbonKg.add(metric == null ? 0.0 : round(metric.getTotalCarbonKgco2e(), 2));
+            ingredientUsedKg.add(metric == null ? 0.0 : round(metric.getTotalFoodGrams().divide(GRAMS_PER_KG, 4, RoundingMode.HALF_UP), 2));
+            carbonReductionKgco2e.add(metric == null ? 0.0 : round(metric.getTotalCarbonKgco2e(), 2));
         }
 
         return new DailyTrendResponse(
                 labels,
-                new DailyTrendResponse.Series(sessions, participants, foodGrams, carbonKg)
+                new DailyTrendResponse.OperationSeries(sessions, participants),
+                new DailyTrendResponse.EnvironmentSeries(ingredientUsedKg, carbonReductionKgco2e)
         );
     }
 
@@ -97,12 +124,12 @@ public class DashboardQueryService {
         return toTopItems(placeRepository.findTopPlaces(today().minusDays(29), PageRequest.of(0, 5)));
     }
 
-    public List<TopItemResponse> topUsedIngredients() {
-        return toTopItems(ingredientRepository.findTopUsedIngredients(today().minusDays(29), PageRequest.of(0, 5)));
+    public List<TopIngredientResponse> topUsedIngredients() {
+        return toTopIngredients(ingredientRepository.findTopUsedIngredients(today().minusDays(29), PageRequest.of(0, 5)));
     }
 
-    public List<TopItemResponse> topLeftoverIngredients() {
-        return toTopItems(ingredientRepository.findTopLeftoverIngredients(today().minusDays(29), PageRequest.of(0, 5)));
+    public List<TopIngredientResponse> topLeftoverIngredients() {
+        return toTopIngredients(ingredientRepository.findTopLeftoverIngredients(today().minusDays(29), PageRequest.of(0, 5)));
     }
 
     public LocalDate findLastSuccessDate() {
@@ -112,6 +139,17 @@ public class DashboardQueryService {
     private List<TopItemResponse> toTopItems(List<Object[]> rows) {
         return rows.stream()
                 .map(row -> new TopItemResponse((String) row[0], round((Number) row[1], 2)))
+                .toList();
+    }
+
+    private List<TopIngredientResponse> toTopIngredients(List<Object[]> rows) {
+        return rows.stream()
+                .map(row -> new TopIngredientResponse(
+                        (String) row[0],
+                        round((Number) row[1], 0),
+                        round((Number) row[2], 0),
+                        round((Number) row[3], 1)
+                ))
                 .toList();
     }
 
@@ -128,5 +166,9 @@ public class DashboardQueryService {
 
     private double round(BigDecimal value, int scale) {
         return value.setScale(scale, RoundingMode.HALF_UP).doubleValue();
+    }
+
+    private BigDecimal nullToZero(BigDecimal value) {
+        return value == null ? BigDecimal.ZERO : value;
     }
 }

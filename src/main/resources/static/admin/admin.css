@@ -70,6 +70,13 @@ body {
   margin-bottom: 18px;
 }
 
+.content-lead {
+  max-width: 760px;
+  margin: 8px 0 0;
+  color: #555;
+  line-height: 1.5;
+}
+
 h1,
 h2 {
   margin: 0;
@@ -91,9 +98,16 @@ h2 {
   text-transform: uppercase;
 }
 
+.hero-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
 .kpi-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 18px;
 }
@@ -105,6 +119,22 @@ h2 {
   border: 1px solid #e0e0e0;
   border-radius: 4px;
   padding: 16px 18px;
+}
+
+.kpi-card-primary,
+.kpi-card-carbon {
+  min-height: 148px;
+  border-top-width: 4px;
+}
+
+.kpi-card-primary {
+  border-top-color: #2f5d50;
+  background: linear-gradient(180deg, #ffffff 0%, #f3faf7 100%);
+}
+
+.kpi-card-carbon {
+  border-top-color: #7b4d8a;
+  background: linear-gradient(180deg, #ffffff 0%, #f8f4fa 100%);
 }
 
 .kpi-label {
@@ -122,11 +152,24 @@ h2 {
   overflow-wrap: anywhere;
 }
 
+.kpi-card-primary .kpi-value,
+.kpi-card-carbon .kpi-value {
+  font-size: 34px;
+}
+
 .kpi-unit {
   margin-left: 2px;
   color: #888;
   font-size: 12px;
   font-weight: 400;
+}
+
+.kpi-help,
+.kpi-sub {
+  margin-top: 8px;
+  color: #666;
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .module {
@@ -148,7 +191,7 @@ h2 {
 
 .chart-wrap {
   position: relative;
-  height: 300px;
+  height: 280px;
 }
 
 .chart-wrap canvas {
@@ -157,6 +200,12 @@ h2 {
 }
 
 .analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.chart-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
@@ -183,14 +232,19 @@ th {
   text-transform: uppercase;
 }
 
-td:nth-child(1),
-th:nth-child(1) {
+td:first-child,
+th:first-child {
   width: 64px;
 }
 
-td:nth-child(3),
-th:nth-child(3) {
+td:last-child,
+th:last-child {
   width: 140px;
+  text-align: right;
+}
+
+td:nth-child(n + 3),
+th:nth-child(n + 3) {
   text-align: right;
 }
 
@@ -206,6 +260,11 @@ th:nth-child(3) {
 @media (max-width: 960px) {
   .kpi-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .hero-metrics,
+  .chart-grid {
+    grid-template-columns: 1fr;
   }
 
   .analytics-grid {
@@ -237,13 +296,13 @@ th:nth-child(3) {
     grid-template-columns: 1fr;
   }
 
-  td:nth-child(1),
-  th:nth-child(1) {
+  td:first-child,
+  th:first-child {
     width: 48px;
   }
 
-  td:nth-child(3),
-  th:nth-child(3) {
+  td:last-child,
+  th:last-child {
     width: 110px;
   }
 }

@@ -1,10 +1,14 @@
 package com.kirozero.netzero.domain.dashboard.dto;
 
 public record ImpactSummaryResponse(
-        double totalFoodProcessedKg,
-        double totalCarbonSavedKgco2e,
+        double totalIngredientUsedKg,
+        double estimatedCarbonReductionKgco2e,
         long totalParticipants,
         long totalCompletedSessions,
-        double treeEquivalent
+        double treeEquivalent,
+        double averageIngredientUseRate,
+        double lowCarbonMenuSelectionRate,
+        long totalRefundAmount,
+        double averageRefundAmount
 ) {
 }

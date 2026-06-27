@@ -4,14 +4,19 @@ import java.util.List;
 
 public record DailyTrendResponse(
         List<String> labels,
-        Series series
+        OperationSeries operation,
+        EnvironmentSeries environment
 ) {
 
-    public record Series(
+    public record OperationSeries(
             List<Long> sessions,
-            List<Long> participants,
-            List<Double> foodGrams,
-            List<Double> carbonKg
+            List<Long> participants
+    ) {
+    }
+
+    public record EnvironmentSeries(
+            List<Double> ingredientUsedKg,
+            List<Double> carbonReductionKgco2e
     ) {
     }
 }

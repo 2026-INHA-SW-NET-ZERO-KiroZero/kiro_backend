@@ -66,6 +66,12 @@ public class EventSessionCompletedRaw {
     @Column(name = "estimated_carbon_saved_kgco2e", nullable = false, precision = 10, scale = 3)
     private BigDecimal estimatedCarbonSavedKgco2e;
 
+    @Column(name = "refund_amount_per_user")
+    private Integer refundAmountPerUser;
+
+    @Column(name = "total_refund_amount")
+    private Integer totalRefundAmount;
+
     @Column(name = "created_at", nullable = false, columnDefinition = "datetime default current_timestamp")
     private LocalDateTime createdAt;
 }

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>임팩트 대시보드</title>
+  <title>스마트 캠퍼스 성과 대시보드</title>
   <link rel="stylesheet" th:href="@{/admin/admin.css}">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -16,32 +16,53 @@
   </header>
 
   <div class="breadcrumbs">
-    <div><a href="/admin/dashboard">홈</a> &rsaquo; 대시보드</div>
+    <div><a href="/admin/dashboard">홈</a> &rsaquo; 성과 대시보드</div>
     <div>마지막 집계일: <span th:text="${lastUpdatedDate == null ? '없음' : lastUpdatedDate}">없음</span></div>
   </div>
 
   <main class="content">
     <div class="content-header">
-      <h1>임팩트 대시보드</h1>
-      <div class="window-label">최근 30일</div>
+      <div>
+        <h1>스마트 캠퍼스 성과 대시보드</h1>
+        <p class="content-lead">공동조리 참여가 캠퍼스 전체의 식재료 소진, 탄소 감축, 공간 운영 성과로 이어지는 흐름을 누적 리포트로 확인합니다.</p>
+      </div>
+      <div class="window-label">최근 30일 누적</div>
     </div>
 
-    <section class="kpi-grid" aria-label="임팩트 요약">
-      <article class="kpi-card">
-        <div class="kpi-label">소진한 음식</div>
-        <div class="kpi-value"><span id="kpi-food">0</span><span class="kpi-unit">kg</span></div>
+    <section class="hero-metrics" aria-label="핵심 환경 성과">
+      <article class="kpi-card kpi-card-primary">
+        <div class="kpi-label">소진한 식재료</div>
+        <div class="kpi-value"><span id="kpi-ingredient">0</span><span class="kpi-unit">kg</span></div>
+        <div class="kpi-help">폐기 전 식재료를 공동조리에 전환</div>
       </article>
-      <article class="kpi-card">
-        <div class="kpi-label">절감한 탄소</div>
+      <article class="kpi-card kpi-card-carbon">
+        <div class="kpi-label">추정 탄소 감축량</div>
         <div class="kpi-value"><span id="kpi-carbon">0</span><span class="kpi-unit">kgCO2e</span></div>
+        <div class="kpi-help">음식물쓰레기 저감 효과를 탄소 감축량으로 환산</div>
       </article>
+    </section>
+
+    <section class="kpi-grid" aria-label="운영 요약">
       <article class="kpi-card">
-        <div class="kpi-label">참여자 수</div>
+        <div class="kpi-label">공동조리 참여자</div>
         <div class="kpi-value" id="kpi-participants">0</div>
       </article>
       <article class="kpi-card">
-        <div class="kpi-label">완료 세션</div>
+        <div class="kpi-label">공동조리 세션</div>
         <div class="kpi-value" id="kpi-sessions">0</div>
+      </article>
+      <article class="kpi-card">
+        <div class="kpi-label">평균 재료 소진율</div>
+        <div class="kpi-value"><span id="kpi-use-rate">0</span><span class="kpi-unit">%</span></div>
+      </article>
+      <article class="kpi-card">
+        <div class="kpi-label">저탄소 메뉴 선택률</div>
+        <div class="kpi-value"><span id="kpi-low-carbon">0</span><span class="kpi-unit">%</span></div>
+      </article>
+      <article class="kpi-card">
+        <div class="kpi-label">총 / 평균 환급액</div>
+        <div class="kpi-value"><span id="kpi-refund-total">0</span><span class="kpi-unit">원</span></div>
+        <div class="kpi-sub">평균 <span id="kpi-refund-avg">0</span>원</div>
       </article>
       <article class="kpi-card">
         <div class="kpi-label">나무 환산</div>
@@ -50,12 +71,24 @@
     </section>
     <p id="impact-status" class="status" aria-live="polite"></p>
 
-    <section class="module results">
-      <h2>최근 5일 추이</h2>
-      <div class="module-body">
-        <p id="trend-status" class="status" aria-live="polite"></p>
-        <div class="chart-wrap">
-          <canvas id="trend-chart" aria-label="최근 5일 추이"></canvas>
+    <section class="chart-grid">
+      <div class="module results">
+        <h2>운영 추이</h2>
+        <div class="module-body">
+          <p id="operation-trend-status" class="status" aria-live="polite"></p>
+          <div class="chart-wrap">
+            <canvas id="operation-trend-chart" aria-label="운영 추이"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="module results">
+        <h2>환경 성과 추이</h2>
+        <div class="module-body">
+          <p id="environment-trend-status" class="status" aria-live="polite"></p>
+          <div class="chart-wrap">
+            <canvas id="environment-trend-chart" aria-label="환경 성과 추이"></canvas>
+          </div>
         </div>
       </div>
     </section>
@@ -80,24 +113,24 @@
         <div class="module-body">
           <table>
             <thead>
-              <tr><th>순위</th><th>식재료</th><th>그램</th></tr>
+              <tr><th>순위</th><th>식재료</th><th>투입량</th><th>남은량</th><th>잔여율</th></tr>
             </thead>
             <tbody id="top-used-body">
-              <tr><td colspan="3" class="muted">데이터 없음</td></tr>
+              <tr><td colspan="5" class="muted">데이터 없음</td></tr>
             </tbody>
           </table>
         </div>
       </div>
 
       <div class="module results">
-        <h2>많이 남긴 식재료 TOP 5</h2>
+        <h2>잔여율 높은 식재료 TOP 5</h2>
         <div class="module-body">
           <table>
             <thead>
-              <tr><th>순위</th><th>식재료</th><th>그램</th></tr>
+              <tr><th>순위</th><th>식재료</th><th>투입량</th><th>남은량</th><th>잔여율</th></tr>
             </thead>
             <tbody id="top-leftover-body">
-              <tr><td colspan="3" class="muted">데이터 없음</td></tr>
+              <tr><td colspan="5" class="muted">데이터 없음</td></tr>
             </tbody>
           </table>
         </div>
@@ -127,80 +160,116 @@
     }
 
     function renderImpact(data) {
-      byId('kpi-food').textContent = number(data.totalFoodProcessedKg, 2);
-      byId('kpi-carbon').textContent = number(data.totalCarbonSavedKgco2e, 2);
+      byId('kpi-ingredient').textContent = number(data.totalIngredientUsedKg, 2);
+      byId('kpi-carbon').textContent = number(data.estimatedCarbonReductionKgco2e, 2);
       byId('kpi-participants').textContent = number(data.totalParticipants);
       byId('kpi-sessions').textContent = number(data.totalCompletedSessions);
+      byId('kpi-use-rate').textContent = number(data.averageIngredientUseRate, 1);
+      byId('kpi-low-carbon').textContent = number(data.lowCarbonMenuSelectionRate, 1);
+      byId('kpi-refund-total').textContent = number(data.totalRefundAmount);
+      byId('kpi-refund-avg').textContent = number(data.averageRefundAmount);
       byId('kpi-trees').textContent = number(data.treeEquivalent, 2);
       byId('impact-status').textContent = '';
     }
 
+    function chartOptions(unit) {
+      return {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              callback: (value) => `${value}${unit}`
+            }
+          }
+        }
+      };
+    }
+
     function renderTrend(data) {
-      const canvas = byId('trend-chart');
-      new Chart(canvas, {
+      new Chart(byId('operation-trend-chart'), {
         type: 'line',
         data: {
           labels: data.labels,
           datasets: [
             {
               label: '완료 세션',
-              data: data.series.sessions,
+              data: data.operation.sessions,
               borderColor: '#417690',
               backgroundColor: 'rgba(65, 118, 144, 0.12)',
-              yAxisID: 'count',
               tension: 0.25,
               fill: true
             },
             {
               label: '참여자',
-              data: data.series.participants,
+              data: data.operation.participants,
               borderColor: '#2f5d50',
               backgroundColor: 'rgba(47, 93, 80, 0.08)',
-              yAxisID: 'count',
-              tension: 0.25
-            },
-            {
-              label: '소진 음식(g)',
-              data: data.series.foodGrams,
-              borderColor: '#c47f2c',
-              backgroundColor: 'rgba(196, 127, 44, 0.08)',
-              yAxisID: 'amount',
-              tension: 0.25
-            },
-            {
-              label: '탄소 절감(kg)',
-              data: data.series.carbonKg,
-              borderColor: '#7b4d8a',
-              backgroundColor: 'rgba(123, 77, 138, 0.08)',
-              yAxisID: 'amount',
               tension: 0.25
             }
           ]
         },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          interaction: { mode: 'index', intersect: false },
-          scales: {
-            count: { beginAtZero: true, position: 'left' },
-            amount: { beginAtZero: true, position: 'right', grid: { drawOnChartArea: false } }
-          }
-        }
+        options: chartOptions('명')
       });
-      byId('trend-status').textContent = '';
+
+      new Chart(byId('environment-trend-chart'), {
+        type: 'line',
+        data: {
+          labels: data.labels,
+          datasets: [
+            {
+              label: '소진 식재료(kg)',
+              data: data.environment.ingredientUsedKg,
+              borderColor: '#c47f2c',
+              backgroundColor: 'rgba(196, 127, 44, 0.08)',
+              tension: 0.25,
+              fill: true
+            },
+            {
+              label: '추정 탄소 감축량(kgCO2e)',
+              data: data.environment.carbonReductionKgco2e,
+              borderColor: '#7b4d8a',
+              backgroundColor: 'rgba(123, 77, 138, 0.08)',
+              tension: 0.25
+            }
+          ]
+        },
+        options: chartOptions('kg')
+      });
+      byId('operation-trend-status').textContent = '';
+      byId('environment-trend-status').textContent = '';
     }
 
-    function renderTopRows(tbodyId, rows, emptyLabel) {
-      const body = byId(tbodyId);
+    function renderPlaceRows(rows) {
+      const body = byId('top-places-body');
       if (!rows || rows.length === 0) {
-        body.innerHTML = `<tr><td colspan="3" class="muted">${emptyLabel}</td></tr>`;
+        body.innerHTML = '<tr><td colspan="3" class="muted">데이터 없음</td></tr>';
         return;
       }
       body.innerHTML = rows.map((item, index) => `
         <tr>
           <td>${index + 1}</td>
           <td>${escapeHtml(item.name)}</td>
-          <td>${number(item.value, 2)}</td>
+          <td>${number(item.value)}</td>
+        </tr>
+      `).join('');
+    }
+
+    function renderIngredientRows(tbodyId, rows, emptyLabel) {
+      const body = byId(tbodyId);
+      if (!rows || rows.length === 0) {
+        body.innerHTML = `<tr><td colspan="5" class="muted">${emptyLabel}</td></tr>`;
+        return;
+      }
+      body.innerHTML = rows.map((item, index) => `
+        <tr>
+          <td>${index + 1}</td>
+          <td>${escapeHtml(item.ingredientName)}</td>
+          <td>${number(item.inputGrams)}g</td>
+          <td>${number(item.leftoverGrams)}g</td>
+          <td>${number(item.leftoverRate, 1)}%</td>
         </tr>
       `).join('');
     }
@@ -224,25 +293,26 @@
       if (trend.status === 'fulfilled') {
         renderTrend(trend.value);
       } else {
-        byId('trend-status').textContent = '추이 데이터를 불러오지 못했습니다';
+        byId('operation-trend-status').textContent = '운영 추이를 불러오지 못했습니다';
+        byId('environment-trend-status').textContent = '환경 성과 추이를 불러오지 못했습니다';
       }
 
       if (places.status === 'fulfilled') {
-        renderTopRows('top-places-body', places.value, '데이터 없음');
+        renderPlaceRows(places.value);
       } else {
-        renderTopRows('top-places-body', [], '불러오지 못했습니다');
+        byId('top-places-body').innerHTML = '<tr><td colspan="3" class="muted">불러오지 못했습니다</td></tr>';
       }
 
       if (used.status === 'fulfilled') {
-        renderTopRows('top-used-body', used.value, '데이터 없음');
+        renderIngredientRows('top-used-body', used.value, '데이터 없음');
       } else {
-        renderTopRows('top-used-body', [], '불러오지 못했습니다');
+        renderIngredientRows('top-used-body', [], '불러오지 못했습니다');
       }
 
       if (leftover.status === 'fulfilled') {
-        renderTopRows('top-leftover-body', leftover.value, '데이터 없음');
+        renderIngredientRows('top-leftover-body', leftover.value, '데이터 없음');
       } else {
-        renderTopRows('top-leftover-body', [], '불러오지 못했습니다');
+        renderIngredientRows('top-leftover-body', [], '불러오지 못했습니다');
       }
     }
 

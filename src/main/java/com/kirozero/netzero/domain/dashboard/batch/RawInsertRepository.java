@@ -22,8 +22,9 @@ public class RawInsertRepository {
                   (event_date, slot_id, place_name, station_code, menu_name, menu_type,
                    participant_count, finished_food_rate, total_leftover_input_grams,
                    total_leftover_used_grams, avg_ingredient_use_rate,
-                   estimated_food_waste_reduced_grams, estimated_carbon_saved_kgco2e, created_at)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,NOW())
+                   estimated_food_waste_reduced_grams, estimated_carbon_saved_kgco2e,
+                   refund_amount_per_user, total_refund_amount, created_at)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW())
                 """, rows, 1000, (ps, row) -> {
             ps.setObject(1, row.eventDate());
             ps.setObject(2, row.slotId());
@@ -38,6 +39,8 @@ public class RawInsertRepository {
             ps.setObject(11, row.avgIngredientUseRate());
             ps.setObject(12, row.estimatedFoodWasteReducedGrams());
             ps.setObject(13, row.estimatedCarbonSavedKgco2e());
+            ps.setObject(14, row.refundAmountPerUser());
+            ps.setObject(15, row.totalRefundAmount());
         });
     }
 
@@ -89,7 +92,9 @@ public class RawInsertRepository {
             BigDecimal totalLeftoverUsedGrams,
             Integer avgIngredientUseRate,
             BigDecimal estimatedFoodWasteReducedGrams,
-            BigDecimal estimatedCarbonSavedKgco2e
+            BigDecimal estimatedCarbonSavedKgco2e,
+            Integer refundAmountPerUser,
+            Integer totalRefundAmount
     ) {
 
         static SessionCompletedRow of(ParsedEvent event) {
@@ -106,7 +111,9 @@ public class RawInsertRepository {
                     event.decimal("total_leftover_used_grams"),
                     event.intVal("avg_ingredient_use_rate"),
                     event.decimal("estimated_food_waste_reduced_grams"),
-                    event.decimal("estimated_carbon_saved_kgco2e")
+                    event.decimal("estimated_carbon_saved_kgco2e"),
+                    event.intVal("refund_amount_per_user"),
+                    event.intVal("total_refund_amount")
             );
         }
     }
