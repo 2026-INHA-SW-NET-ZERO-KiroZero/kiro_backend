@@ -29,6 +29,7 @@ dependencies {
     implementation platform('software.amazon.awssdk:bom:2.30.31')
     implementation 'software.amazon.awssdk:s3'
     implementation 'software.amazon.awssdk:dynamodb'
+    implementation 'software.amazon.awssdk:lambda'
     compileOnly 'org.projectlombok:lombok'
     runtimeOnly 'com.mysql:mysql-connector-j'
     runtimeOnly 'com.h2database:h2'

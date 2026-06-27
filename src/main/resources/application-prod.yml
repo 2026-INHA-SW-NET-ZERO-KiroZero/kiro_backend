@@ -32,3 +32,11 @@ netzero3:
     dynamodb:
       enabled: ${NETZERO3_DYNAMODB_ENABLED:false}
       table-name: ${NETZERO3_DYNAMODB_TABLE_NAME:campus_sustainability_reports}
+
+  report:
+    lambda:
+      enabled: ${NETZERO3_REPORT_LAMBDA_ENABLED:false}
+      function-name: ${NETZERO3_REPORT_LAMBDA_FUNCTION_NAME:}
+      region: ${NETZERO3_REPORT_LAMBDA_REGION:us-east-1}
+      cron: "${NETZERO3_REPORT_LAMBDA_CRON:0 0 9 1 * *}"
+      zone: ${NETZERO3_REPORT_LAMBDA_ZONE:Asia/Seoul}
